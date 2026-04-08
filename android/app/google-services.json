@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "614899789202",
+    "project_id": "bookmygrounds-c5508",
+    "storage_bucket": "bookmygrounds-c5508.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:614899789202:android:3d27957fc4ff04f930654b",
+        "android_client_info": {
+          "package_name": "com.bookmygrounds"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "614899789202-l1ujssb8k8odq4tge5273v6k45j8usfj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgo4aS1p82eT7puTb13skh9Gr6_GelvM8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "614899789202-l1ujssb8k8odq4tge5273v6k45j8usfj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

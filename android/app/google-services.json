@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "614899789202-h32o5l92hqpq2ddfveffs206ha1t53mn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bookmygrounds",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
           "client_id": "614899789202-l1ujssb8k8odq4tge5273v6k45j8usfj.apps.googleusercontent.com",
           "client_type": 3
         }

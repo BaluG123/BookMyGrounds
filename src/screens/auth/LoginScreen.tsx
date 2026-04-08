@@ -12,6 +12,10 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
 
+GoogleSignin.configure({
+  webClientId: '614899789202-l1ujssb8k8odq4tge5273v6k45j8usfj.apps.googleusercontent.com',
+});
+
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
@@ -37,6 +41,14 @@ export default function LoginScreen() {
     try {
       setGoogleLoading(true);
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      
+      // Force account picker by signing out first
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignore if not signed in
+      }
+
       const signInResult = await GoogleSignin.signIn() as any;
       const idToken = signInResult.data?.idToken || signInResult.idToken;
       if (!idToken) throw new Error('No Google idToken found');

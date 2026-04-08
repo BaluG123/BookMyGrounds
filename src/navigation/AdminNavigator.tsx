@@ -2,15 +2,12 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { theme } from '../utils/theme';
-import { View, Text } from 'react-native';
 import DashboardScreen from '../screens/admin/DashboardScreen';
 import MyGroundsScreen from '../screens/admin/MyGroundsScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
+import AdminBookingsScreen from '../screens/admin/AdminBookingsScreen';
 
 const Tab = createBottomTabNavigator();
-
-// Temporary stubs
-const BookingsScreen = () => <View><Text>Bookings</Text></View>;
 
 export default function AdminNavigator() {
   return (
@@ -30,7 +27,7 @@ export default function AdminNavigator() {
       })}>
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="MyGrounds" component={MyGroundsScreen} />
-      <Tab.Screen name="Bookings" component={BookingsScreen} />
+      <Tab.Screen name="Bookings" component={AdminBookingsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

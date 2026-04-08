@@ -1,18 +1,22 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState, AppDispatch } from '../store';
+import { useAppDispatch, useAppSelector, RootState } from '../store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setCredentials, setLoading } from '../store/slices/authSlice';
 import AuthNavigator from './AuthNavigator';
 import AdminNavigator from './AdminNavigator';
 import CustomerNavigator from './CustomerNavigator';
+import GroundDetailScreen from '../screens/customer/GroundDetailScreen';
+import SelectSlotScreen from '../screens/customer/SelectSlotScreen';
 import { View, ActivityIndicator } from 'react-native';
 import { theme } from '../utils/theme';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+const RootStack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const dispatch = useDispatch<AppDispatch>();
-  const { token, user, isLoading } = useSelector((state: RootState) => state.auth);
+  const dispatch = useAppDispatch();
+  const { token, user, isLoading } = useAppSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     const bootstrapAsync = async () => {
@@ -48,11 +52,14 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       {token && user ? (
-        user.role === 'admin' ? (
-          <AdminNavigator />
-        ) : (
-          <CustomerNavigator />
-        )
+        <RootStack.Navigator screenOptions={{ headerShown: false }}>
+          <RootStack.Screen 
+            name="MainTabs" 
+            component={user.role === 'admin' ? AdminNavigator : CustomerNavigator} 
+          />
+          <RootStack.Screen name="GroundDetail" component={GroundDetailScreen} />
+          <RootStack.Screen name="SelectSlot" component={SelectSlotScreen} />
+        </RootStack.Navigator>
       ) : (
         <AuthNavigator />
       )}

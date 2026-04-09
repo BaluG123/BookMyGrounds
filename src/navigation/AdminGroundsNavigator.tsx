@@ -12,31 +12,38 @@ export default function AdminGroundsNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerTintColor: theme.colors.primary,
+        headerTintColor: theme.colors.primaryDark,
+        headerShadowVisible: false,
+        headerStyle: {
+          backgroundColor: theme.colors.background,
+        },
         headerTitleStyle: {
           ...theme.typography.h3,
           color: theme.colors.textMain,
         },
+        contentStyle: {
+          backgroundColor: theme.colors.background,
+        },
       }}>
-      <Stack.Screen 
-        name="MyGroundsList" 
-        component={MyGroundsScreen} 
+      <Stack.Screen
+        name="MyGroundsList"
+        component={MyGroundsScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen 
-        name="AddGround" 
-        component={AddGroundScreen} 
-        options={{ title: 'Add New Turf' }}
+      <Stack.Screen
+        name="AddGround"
+        component={AddGroundScreen}
+        options={{ title: 'Create Turf' }}
       />
-      <Stack.Screen 
-        name="GroundDetail" 
-        component={GroundDetailScreen} 
-        options={{ title: 'Ground Details' }}
+      <Stack.Screen
+        name="GroundDetail"
+        component={GroundDetailScreen}
+        options={{ title: 'Turf Overview' }}
       />
-      <Stack.Screen 
-        name="EditGround" 
-        component={EditGroundScreen} 
-        options={{ title: 'Edit Ground' }}
+      <Stack.Screen
+        name="EditGround"
+        component={EditGroundScreen}
+        options={{ title: 'Edit Turf' }}
       />
     </Stack.Navigator>
   );

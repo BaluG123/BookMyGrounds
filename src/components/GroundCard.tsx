@@ -8,52 +8,56 @@ interface GroundProps {
   onPress: () => void;
 }
 
-const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=600&auto=format&fit=crop';
+const DEFAULT_IMAGE =
+  'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=600&auto=format&fit=crop';
 
 export const GroundCard: React.FC<GroundProps> = ({ ground, onPress }) => {
-  // Handle both list view (primary_image) and detail view (images array)
   let imageUri = DEFAULT_IMAGE;
-  
-  if (ground.primary_image) {
+
+  if (ground?.primary_image) {
     imageUri = ground.primary_image;
-  } else if (ground.images?.length > 0) {
+  } else if (ground?.images?.length > 0) {
     imageUri = ground.images[0].image;
   }
-  
-  console.log('[GroundCard] Image URI:', imageUri, 'for ground:', ground.name);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
-      <Image 
-        source={{ uri: imageUri }} 
-        style={styles.image}
-        onError={(e) => console.log('[GroundCard] Image load error for', ground.name, ':', e.nativeEvent.error)}
-      />
-      
-      <View style={styles.content}>
-        <View style={styles.headerRow}>
-          <Text style={styles.name} numberOfLines={1}>{ground.name}</Text>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.92}>
+      <Image source={{ uri: imageUri }} style={styles.image} />
+      <View style={styles.imageOverlay}>
+        <View style={styles.topRow}>
+          <View style={styles.categoryPill}>
+            <Text style={styles.categoryText}>
+              {ground?.ground_type_display || ground?.ground_type || 'Turf'}
+            </Text>
+          </View>
           <View style={styles.ratingBadge}>
-            <Icon name="star" size={14} color={theme.colors.warning} />
-            <Text style={styles.ratingText}>{ground.avg_rating || 'New'}</Text>
+            <Icon name="star" size={14} color={theme.colors.accent} />
+            <Text style={styles.ratingText}>{ground?.avg_rating || 'New'}</Text>
           </View>
         </View>
+      </View>
 
-        <Text style={styles.location} numberOfLines={1}>
-          <Icon name="location-outline" size={14} color={theme.colors.textMuted} /> {ground.city}, {ground.state}
+      <View style={styles.content}>
+        <Text style={styles.name} numberOfLines={1}>
+          {ground?.name || 'Premium Turf'}
         </Text>
-
-        <View style={styles.detailsRow}>
-          <View style={styles.typeTag}>
-            <Text style={styles.typeText}>{ground.ground_type_display || ground.ground_type}</Text>
-          </View>
-          <Text style={styles.price}>
-            {ground.min_price ? (
-              <>Starting at <Text style={styles.priceBold}>₹{ground.min_price.amount}</Text></>
-            ) : (
-              <Text style={styles.priceBold}>Contact for price</Text>
-            )}
+        <View style={styles.locationRow}>
+          <Icon name="location-outline" size={15} color={theme.colors.textSoft} />
+          <Text style={styles.location} numberOfLines={1}>
+            {ground?.city || 'City'}, {ground?.state || 'State'}
           </Text>
+        </View>
+
+        <View style={styles.footerRow}>
+          <View>
+            <Text style={styles.priceLabel}>Starting from</Text>
+            <Text style={styles.priceValue}>
+              {ground?.min_price?.amount ? `₹${ground.min_price.amount}` : 'On request'}
+            </Text>
+          </View>
+          <View style={styles.ctaPill}>
+            <Text style={styles.ctaText}>View</Text>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -62,79 +66,95 @@ export const GroundCard: React.FC<GroundProps> = ({ ground, onPress }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.l,
-    marginBottom: theme.spacing.m,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    marginBottom: theme.spacing.l,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.7)',
+    ...theme.shadows.strong,
   },
   image: {
     width: '100%',
-    height: 180,
-    backgroundColor: theme.colors.backgroundLight,
+    height: 210,
+    backgroundColor: theme.colors.backgroundAlt,
   },
-  content: {
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     padding: theme.spacing.m,
   },
-  headerRow: {
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.xs,
   },
-  name: {
-    ...theme.typography.h3,
-    color: theme.colors.textMain,
-    flex: 1,
-    marginRight: theme.spacing.s,
+  categoryPill: {
+    backgroundColor: 'rgba(7, 17, 31, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: theme.borderRadius.pill,
+  },
+  categoryText: {
+    ...theme.typography.caption,
+    color: theme.colors.white,
+    textTransform: 'capitalize',
   },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.backgroundLight,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.s,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: theme.borderRadius.pill,
   },
   ratingText: {
     ...theme.typography.caption,
-    fontWeight: '600',
     color: theme.colors.textMain,
     marginLeft: 4,
+  },
+  content: {
+    padding: theme.spacing.m,
+  },
+  name: {
+    ...theme.typography.h3,
+    color: theme.colors.textMain,
+    marginBottom: theme.spacing.s,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.m,
   },
   location: {
     ...theme.typography.bodyS,
     color: theme.colors.textMuted,
-    marginBottom: theme.spacing.s,
+    marginLeft: 6,
+    flex: 1,
   },
-  detailsRow: {
+  footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: theme.spacing.xs,
   },
-  typeTag: {
+  priceLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textSoft,
+  },
+  priceValue: {
+    ...theme.typography.h3,
+    color: theme.colors.primaryDark,
+  },
+  ctaPill: {
     backgroundColor: theme.colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: theme.borderRadius.pill,
   },
-  typeText: {
-    ...theme.typography.caption,
-    color: theme.colors.primaryDark,
-    textTransform: 'capitalize',
-    fontWeight: '600',
-  },
-  price: {
+  ctaText: {
     ...theme.typography.bodyS,
-    color: theme.colors.textMuted,
-  },
-  priceBold: {
-    fontWeight: '700',
-    color: theme.colors.textMain,
+    color: theme.colors.primaryDark,
   },
 });

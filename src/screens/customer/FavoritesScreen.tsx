@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { theme } from '../../utils/theme';
 import { GroundCard } from '../../components/GroundCard';
 import { groundsAPI } from '../../api/grounds';
-import { useNavigation } from '@react-navigation/native';
 
 export default function FavoritesScreen() {
   const navigation = useNavigation<any>();
@@ -29,49 +29,82 @@ export default function FavoritesScreen() {
 
   return (
     <ScreenContainer>
-      <View style={styles.header}>
-        <Text style={styles.title}>Saved Turfs</Text>
-      </View>
       <FlatList
         data={favorites}
-        keyExtractor={(item) => item.id?.toString()}
+        keyExtractor={item => item.id?.toString()}
         contentContainerStyle={styles.listContainer}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={styles.eyebrow}>FAVORITES</Text>
+            <Text style={styles.title}>Your saved shortlist.</Text>
+            <Text style={styles.subtitle}>Keep the venues you love ready for the next booking.</Text>
+          </View>
+        }
         renderItem={({ item }) => (
-          <GroundCard 
-            ground={item.ground} // Assuming the API returns {id, ground: {id, name...}}
-            onPress={() => navigation.navigate('GroundDetail', { id: item.ground?.id })} 
+          <GroundCard
+            ground={item.ground}
+            onPress={() => navigation.navigate('GroundDetail', { id: item.ground?.id })}
           />
         )}
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
           ) : (
-            <Text style={styles.emptyText}>You haven't saved any turfs yet.</Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No saved turfs</Text>
+              <Text style={styles.emptyText}>Favorite venues will show up here once you start saving them.</Text>
+            </View>
           )
         }
         refreshing={loading}
         onRefresh={fetchFavorites}
+        showsVerticalScrollIndicator={false}
       />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    padding: theme.spacing.m,
-  },
-  title: {
-    ...theme.typography.h2,
-    color: theme.colors.textMain,
-  },
   listContainer: {
     padding: theme.spacing.m,
-    paddingTop: 0,
+    paddingBottom: 120,
+  },
+  header: {
+    marginTop: theme.spacing.s,
+    marginBottom: theme.spacing.l,
+  },
+  eyebrow: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.s,
+  },
+  title: {
+    ...theme.typography.h1,
+    color: theme.colors.textMain,
+    marginBottom: theme.spacing.s,
+  },
+  subtitle: {
+    ...theme.typography.bodyL,
+    color: theme.colors.textMuted,
+  },
+  loader: {
+    marginTop: theme.spacing.xl,
+  },
+  emptyState: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    ...theme.shadows.soft,
+  },
+  emptyTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.textMain,
+    marginBottom: theme.spacing.s,
   },
   emptyText: {
-    textAlign: 'center',
-    color: theme.colors.textMuted,
-    marginTop: theme.spacing.xl,
     ...theme.typography.bodyM,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
   },
 });

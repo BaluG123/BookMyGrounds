@@ -15,6 +15,8 @@ import { theme } from '../../utils/theme';
 import { groundsAPI } from '../../api/grounds';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { getErrorMessage } from '../../utils/error';
+import { openCoordinatesInGoogleMaps } from '../../utils/map';
 
 export default function GroundDetailScreen() {
   const navigation = useNavigation<any>();
@@ -41,12 +43,9 @@ export default function GroundDetailScreen() {
     try {
       setLoading(true);
       const res = await groundsAPI.detail(groundId);
-      console.log('[GroundDetail] Fetched ground:', res.data.name);
-      console.log('[GroundDetail] Images:', res.data.images);
       setGround(res.data);
-    } catch (e) {
-      console.log('Error fetching ground detail', e);
-      Alert.alert('Error', 'Failed to load ground details');
+    } catch (error) {
+      Alert.alert('Unable to load ground', getErrorMessage(error, 'Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -70,9 +69,7 @@ export default function GroundDetailScreen() {
   const confirmDelete = async () => {
     try {
       setDeleting(true);
-      console.log('[DEBUG] Deleting ground with ID:', groundId);
-      const response = await groundsAPI.delete(groundId);
-      console.log('[DEBUG] Delete response:', response);
+      await groundsAPI.delete(groundId);
       Alert.alert('Success', 'Ground deleted successfully', [
         { 
           text: 'OK', 
@@ -81,15 +78,8 @@ export default function GroundDetailScreen() {
           }
         },
       ]);
-    } catch (e: any) {
-      console.log('[DEBUG] Error deleting ground:', e);
-      console.log('[DEBUG] Error response:', e.response?.data);
-      console.log('[DEBUG] Error status:', e.response?.status);
-      const errorMsg = e.response?.data?.detail || 
-                       e.response?.data?.message || 
-                       e.response?.data?.error ||
-                       'Failed to delete ground';
-      Alert.alert('Error', errorMsg);
+    } catch (error: any) {
+      Alert.alert('Delete failed', getErrorMessage(error, 'Failed to delete ground.'));
     } finally {
       setDeleting(false);
     }
@@ -125,7 +115,7 @@ export default function GroundDetailScreen() {
 
   return (
     <ScreenContainer>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Images */}
         {ground.images && ground.images.length > 0 ? (
           <ScrollView horizontal pagingEnabled style={styles.imageCarousel}>
@@ -149,10 +139,24 @@ export default function GroundDetailScreen() {
         <View style={styles.section}>
           <View style={styles.headerRow}>
             <Text style={styles.name}>{ground.name}</Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>
-                {ground.is_active ? 'Active' : 'Inactive'}
-              </Text>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.mapAction}
+                onPress={() =>
+                  openCoordinatesInGoogleMaps({
+                    latitude: ground.latitude,
+                    longitude: ground.longitude,
+                    label: ground.name,
+                  })
+                }
+                activeOpacity={0.85}>
+                <Icon name="map-outline" size={18} color={theme.colors.white} />
+              </TouchableOpacity>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusText}>
+                  {ground.is_active ? 'Active' : 'Inactive'}
+                </Text>
+              </View>
             </View>
           </View>
           
@@ -318,10 +322,23 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: theme.spacing.xs,
   },
+  headerActions: {
+    alignItems: 'flex-end',
+  },
   name: {
     ...theme.typography.h2,
     color: theme.colors.textMain,
     flex: 1,
+  },
+  mapAction: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.s,
+    ...theme.shadows.soft,
   },
   statusBadge: {
     paddingHorizontal: 12,

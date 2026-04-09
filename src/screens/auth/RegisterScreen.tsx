@@ -1,19 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { theme } from '../../utils/theme';
 import { authAPI } from '../../api/auth';
-import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { useDispatch } from 'react-redux';
-import { setCredentials } from '../../store/slices/authSlice';
 
 export default function RegisterScreen() {
   const navigation = useNavigation<any>();
-  const dispatch = useDispatch();
-
   const [form, setForm] = useState({
     email: '',
     full_name: '',
@@ -24,115 +20,247 @@ export default function RegisterScreen() {
     password: '',
     password_confirm: '',
   });
-
   const [loading, setLoading] = useState(false);
 
+  const selectedRoleCopy = useMemo(
+    () =>
+      form.role === 'admin'
+        ? 'Launch and manage premium turf experiences for your players.'
+        : 'Book standout venues quickly and keep every match organized.',
+    [form.role],
+  );
+
   const handleChange = (key: string, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm(prev => ({ ...prev, [key]: value }));
   };
 
   const handleRegister = async () => {
     if (form.password !== form.password_confirm) {
       return Alert.alert('Error', 'Passwords do not match');
     }
+
     try {
       setLoading(true);
-      const res = await authAPI.register(form);
-      if (res.data.token) {
-        dispatch(setCredentials({ token: res.data.token, user: res.data.user }));
-      } else {
-        Alert.alert('Success', 'Registered successfully, please login.');
-        navigation.navigate('Login');
-      }
+      await authAPI.register(form);
+      Alert.alert('Success', 'Registered successfully. Please login with your new account.');
+      navigation.navigate('Login');
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.response?.data?.message || 'Check your details and try again.');
+      Alert.alert(
+        'Registration Failed',
+        error.response?.data?.message || 'Check your details and try again.',
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScreenContainer style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Icon name="arrow-back" size={24} color={theme.colors.textMain} onPress={() => navigation.goBack()} />
-          <Text style={styles.title}>Create Account</Text>
+    <ScreenContainer>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+          <Icon name="arrow-back" size={20} color={theme.colors.textMain} />
+        </TouchableOpacity>
+
+        <View style={styles.heroCard}>
+          <Text style={styles.eyebrow}>CREATE ACCOUNT</Text>
+          <Text style={styles.title}>Build your matchday identity.</Text>
+          <Text style={styles.subtitle}>{selectedRoleCopy}</Text>
         </View>
 
-        <View style={styles.roleSelection}>
-          <Text style={styles.label}>I want to...</Text>
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>Choose your mode</Text>
           <View style={styles.roleTabs}>
-            <Button
-              title="Book Turfs"
-              variant={form.role === 'customer' ? 'primary' : 'outline'}
-              style={styles.roleTab}
+            <TouchableOpacity
+              style={[styles.roleTab, form.role === 'customer' && styles.roleTabActive]}
               onPress={() => handleChange('role', 'customer')}
-            />
-            <Button
-              title="Host Turfs"
-              variant={form.role === 'admin' ? 'primary' : 'outline'}
-              style={styles.roleTab}
+              activeOpacity={0.88}>
+              <Icon
+                name="flash-outline"
+                size={18}
+                color={form.role === 'customer' ? theme.colors.white : theme.colors.primaryDark}
+              />
+              <Text
+                style={[
+                  styles.roleTabText,
+                  form.role === 'customer' && styles.roleTabTextActive,
+                ]}>
+                Player
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.roleTab, form.role === 'admin' && styles.roleTabActiveDark]}
               onPress={() => handleChange('role', 'admin')}
+              activeOpacity={0.88}>
+              <Icon
+                name="business-outline"
+                size={18}
+                color={form.role === 'admin' ? theme.colors.white : theme.colors.primaryDark}
+              />
+              <Text style={[styles.roleTabText, form.role === 'admin' && styles.roleTabTextActive]}>
+                Host
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Input label="Full Name" value={form.full_name} onChangeText={t => handleChange('full_name', t)} />
+          <Input
+            label="Email"
+            value={form.email}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            onChangeText={t => handleChange('email', t)}
+          />
+          <Input
+            label="Phone"
+            value={form.phone}
+            keyboardType="phone-pad"
+            onChangeText={t => handleChange('phone', t)}
+          />
+
+          <View style={styles.row}>
+            <Input
+              label="City"
+              value={form.city}
+              onChangeText={t => handleChange('city', t)}
+              containerStyle={styles.halfInput}
+            />
+            <Input
+              label="State"
+              value={form.state}
+              onChangeText={t => handleChange('state', t)}
+              containerStyle={styles.halfInput}
             />
           </View>
-        </View>
 
-        <Input label="Full Name" value={form.full_name} onChangeText={(t) => handleChange('full_name', t)} />
-        <Input label="Email" value={form.email} autoCapitalize="none" keyboardType="email-address" onChangeText={(t) => handleChange('email', t)} />
-        <Input label="Phone" value={form.phone} keyboardType="phone-pad" onChangeText={(t) => handleChange('phone', t)} />
-        
-        <View style={styles.row}>
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Input label="City" value={form.city} onChangeText={(t) => handleChange('city', t)} />
+          <Input
+            label="Password"
+            value={form.password}
+            secureTextEntry
+            onChangeText={t => handleChange('password', t)}
+          />
+          <Input
+            label="Confirm Password"
+            value={form.password_confirm}
+            secureTextEntry
+            onChangeText={t => handleChange('password_confirm', t)}
+          />
+
+          <Button title="Create Account" onPress={handleRegister} isLoading={loading} style={styles.submitButton} />
+
+          <View style={styles.loginRow}>
+            <Text style={styles.loginText}>Already registered?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginLink}>Go to login</Text>
+            </TouchableOpacity>
           </View>
-          <View style={{ flex: 1, marginLeft: 8 }}>
-            <Input label="State" value={form.state} onChangeText={(t) => handleChange('state', t)} />
-          </View>
         </View>
-
-        <Input label="Password" value={form.password} secureTextEntry onChangeText={(t) => handleChange('password', t)} />
-        <Input label="Confirm Password" value={form.password_confirm} secureTextEntry onChangeText={(t) => handleChange('password_confirm', t)} />
-
-        <Button title="Register" onPress={handleRegister} isLoading={loading} style={styles.btn} />
       </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scrollContent: {
+    flexGrow: 1,
     padding: theme.spacing.l,
+    paddingBottom: theme.spacing.xxxl + 20,
   },
-  header: {
-    flexDirection: 'row',
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+    justifyContent: 'center',
+    marginBottom: theme.spacing.l,
+    ...theme.shadows.soft,
   },
-  title: {
-    ...theme.typography.h2,
-    color: theme.colors.textMain,
-    marginLeft: theme.spacing.m,
+  heroCard: {
+    marginBottom: theme.spacing.l,
   },
-  label: {
-    ...theme.typography.bodyM,
-    fontWeight: '600',
+  eyebrow: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
     marginBottom: theme.spacing.s,
   },
-  roleSelection: {
-    marginBottom: theme.spacing.l,
+  title: {
+    ...theme.typography.h1,
+    color: theme.colors.textMain,
+    marginBottom: theme.spacing.s,
+  },
+  subtitle: {
+    ...theme.typography.bodyL,
+    color: theme.colors.textMuted,
+  },
+  formCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+    ...theme.shadows.soft,
+  },
+  formTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.textMain,
+    marginBottom: theme.spacing.m,
   },
   roleTabs: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginBottom: theme.spacing.l,
   },
   roleTab: {
-    flex: 0.48,
+    flex: 1,
+    minHeight: 54,
+    borderRadius: theme.borderRadius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.s,
+    backgroundColor: theme.colors.surface,
+  },
+  roleTabActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  roleTabActiveDark: {
+    backgroundColor: theme.colors.surfaceDark,
+    borderColor: theme.colors.surfaceDark,
+  },
+  roleTabText: {
+    ...theme.typography.bodyS,
+    color: theme.colors.primaryDark,
+    marginLeft: 8,
+  },
+  roleTabTextActive: {
+    color: theme.colors.white,
   },
   row: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing.m,
   },
-  btn: {
+  halfInput: {
+    flex: 1,
+  },
+  submitButton: {
+    marginTop: theme.spacing.s,
+  },
+  loginRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginTop: theme.spacing.l,
-    marginBottom: theme.spacing.xxl,
+  },
+  loginText: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMuted,
+    marginRight: 6,
+  },
+  loginLink: {
+    ...theme.typography.bodyM,
+    color: theme.colors.primary,
+    fontWeight: '700',
   },
 });

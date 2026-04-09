@@ -16,15 +16,32 @@ export default function CustomerNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textMuted,
-        tabBarIcon: ({ color, size }) => {
-          let iconName = '';
-          if (route.name === 'Home') iconName = 'home';
-          else if (route.name === 'Search') iconName = 'search';
-          else if (route.name === 'Bookings') iconName = 'calendar';
-          else if (route.name === 'Favorites') iconName = 'heart';
-          else if (route.name === 'Profile') iconName = 'person';
-          return <Icon name={iconName} size={size} color={color} />;
+        tabBarInactiveTintColor: theme.colors.textSoft,
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          position: 'absolute',
+          left: 16,
+          right: 16,
+          bottom: 18,
+          height: 72,
+          borderTopWidth: 0,
+          borderRadius: 28,
+          backgroundColor: theme.colors.tabBar,
+          paddingTop: 12,
+          paddingBottom: 12,
+          ...theme.shadows.strong,
+        },
+        tabBarIcon: ({ color, focused }) => {
+          let iconName = 'ellipse';
+          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Search') iconName = focused ? 'search' : 'search-outline';
+          else if (route.name === 'Bookings') iconName = focused ? 'calendar' : 'calendar-outline';
+          else if (route.name === 'Favorites') iconName = focused ? 'heart' : 'heart-outline';
+          else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
+          return <Icon name={iconName} size={24} color={color} />;
+        },
+        sceneStyle: {
+          backgroundColor: theme.colors.background,
         },
       })}>
       <Tab.Screen name="Home" component={HomeScreen} />

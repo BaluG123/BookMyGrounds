@@ -24,62 +24,101 @@ export default function AdminBookingsScreen() {
     }
   };
 
-  const renderBooking = ({ item }: { item: any }) => (
-    <View style={styles.card}>
-      <Text style={styles.groundName}>{item.customer_name || 'Customer'}</Text>
-      <Text style={styles.details}>Turf: {item.ground?.name}</Text>
-      <Text style={styles.details}>Date: {item.booking_date} | {item.start_time?.substring(0,5)}</Text>
-      <Text style={[styles.status, { color: item.status === 'confirmed' ? theme.colors.success : theme.colors.warning }]}>
-        {item.status?.toUpperCase() || 'PENDING'}
-      </Text>
-    </View>
-  );
+  const renderBooking = ({ item }: { item: any }) => {
+    const confirmed = item.status === 'confirmed';
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.customerBlock}>
+            <Text style={styles.customerName}>{item.customer_name || 'Customer'}</Text>
+            <Text style={styles.details}>Turf: {item.ground?.name || 'Unknown turf'}</Text>
+          </View>
+          <View style={[styles.statusPill, confirmed ? styles.confirmedPill : styles.pendingPill]}>
+            <Text style={[styles.statusText, confirmed ? styles.confirmedText : styles.pendingText]}>
+              {item.status?.toUpperCase() || 'PENDING'}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.metaLine}>
+          {item.booking_date} at {item.start_time?.substring(0, 5)}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <ScreenContainer>
-      <View style={styles.header}>
-        <Text style={styles.title}>Booking Requests</Text>
-      </View>
       <FlatList
         data={requests}
-        keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+        keyExtractor={item => item.id?.toString() || Math.random().toString()}
         contentContainerStyle={styles.listContainer}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={styles.eyebrow}>REQUESTS</Text>
+            <Text style={styles.title}>Booking pipeline at a glance.</Text>
+            <Text style={styles.subtitle}>Review every incoming request in a calmer, easier-to-scan layout.</Text>
+          </View>
+        }
         renderItem={renderBooking}
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
           ) : (
-            <Text style={styles.emptyText}>No booking requests found.</Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No booking requests</Text>
+              <Text style={styles.emptyText}>Fresh requests will land here as customers start booking.</Text>
+            </View>
           )
         }
         refreshing={loading}
         onRefresh={fetchRequests}
+        showsVerticalScrollIndicator={false}
       />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    padding: theme.spacing.m,
-  },
-  title: {
-    ...theme.typography.h2,
-    color: theme.colors.textMain,
-  },
   listContainer: {
     padding: theme.spacing.m,
-    paddingTop: 0,
+    paddingBottom: 120,
+  },
+  header: {
+    marginTop: theme.spacing.s,
+    marginBottom: theme.spacing.l,
+  },
+  eyebrow: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.s,
+  },
+  title: {
+    ...theme.typography.h1,
+    color: theme.colors.textMain,
+    marginBottom: theme.spacing.s,
+  },
+  subtitle: {
+    ...theme.typography.bodyL,
+    color: theme.colors.textMuted,
   },
   card: {
-    backgroundColor: theme.colors.white,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.m,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    padding: theme.spacing.l,
+    borderRadius: theme.borderRadius.xl,
     marginBottom: theme.spacing.m,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    ...theme.shadows.soft,
   },
-  groundName: {
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  customerBlock: {
+    flex: 1,
+    marginRight: theme.spacing.m,
+  },
+  customerName: {
     ...theme.typography.h3,
     color: theme.colors.textMain,
     marginBottom: 4,
@@ -87,17 +126,50 @@ const styles = StyleSheet.create({
   details: {
     ...theme.typography.bodyM,
     color: theme.colors.textMuted,
-    marginBottom: 4,
   },
-  status: {
+  metaLine: {
+    ...theme.typography.bodyS,
+    color: theme.colors.textSoft,
+    marginTop: theme.spacing.m,
+  },
+  statusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: theme.borderRadius.pill,
+  },
+  confirmedPill: {
+    backgroundColor: '#D9FBF3',
+  },
+  pendingPill: {
+    backgroundColor: '#FFF1D6',
+  },
+  statusText: {
     ...theme.typography.caption,
-    fontWeight: '700',
-    marginTop: 8,
+  },
+  confirmedText: {
+    color: theme.colors.success,
+  },
+  pendingText: {
+    color: '#B96B00',
+  },
+  loader: {
+    marginTop: theme.spacing.xl,
+  },
+  emptyState: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    ...theme.shadows.soft,
+  },
+  emptyTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.textMain,
+    marginBottom: theme.spacing.s,
   },
   emptyText: {
-    textAlign: 'center',
-    color: theme.colors.textMuted,
-    marginTop: theme.spacing.xl,
     ...theme.typography.bodyM,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
   },
 });

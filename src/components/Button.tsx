@@ -31,19 +31,20 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const isOutline = variant === 'outline';
   const isText = variant === 'text';
+  const isSecondary = variant === 'secondary';
 
   const getBackgroundColor = () => {
     if (disabled) return theme.colors.border;
-    if (isOutline || isText) return 'transparent';
-    if (variant === 'secondary') return theme.colors.secondary;
+    if (isText) return 'transparent';
+    if (isOutline) return theme.colors.surface;
+    if (isSecondary) return theme.colors.surfaceDark;
     return theme.colors.primary;
   };
 
   const getTextColor = () => {
-    if (disabled) return theme.colors.textMuted;
-    if (isOutline || isText) {
-      return theme.colors.primary;
-    }
+    if (disabled) return theme.colors.textSoft;
+    if (isText) return theme.colors.textMain;
+    if (isOutline) return theme.colors.primaryDark;
     return theme.colors.white;
   };
 
@@ -52,18 +53,18 @@ export const Button: React.FC<ButtonProps> = ({
       style={[
         styles.container,
         { backgroundColor: getBackgroundColor() },
+        !disabled && !isText && theme.shadows.soft,
         isOutline && styles.outline,
+        isText && styles.textOnly,
         style,
       ]}
       onPress={onPress}
       disabled={disabled || isLoading}
-      activeOpacity={0.8}>
+      activeOpacity={0.88}>
       {isLoading ? (
         <ActivityIndicator color={getTextColor()} />
       ) : (
-        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>
-          {title}
-        </Text>
+        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>{title}</Text>
       )}
     </TouchableOpacity>
   );
@@ -71,18 +72,24 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 48,
-    borderRadius: theme.borderRadius.m,
+    minHeight: 54,
+    borderRadius: theme.borderRadius.pill,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.m,
+    paddingHorizontal: theme.spacing.l,
   },
   outline: {
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: theme.colors.borderStrong,
+  },
+  textOnly: {
+    minHeight: 40,
+    paddingHorizontal: 0,
+    alignItems: 'flex-start',
   },
   text: {
     ...theme.typography.bodyM,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

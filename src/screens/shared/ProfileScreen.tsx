@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Alert, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -10,6 +11,7 @@ import { authAPI } from '../../api/auth';
 import { logout } from '../../store/slices/authSlice';
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -74,6 +76,10 @@ export default function ProfileScreen() {
 
         <View style={styles.actionsCard}>
           <Text style={styles.sectionTitle}>Quick actions</Text>
+          <Button title="Notifications" onPress={() => navigation.navigate('Notifications')} variant="outline" style={styles.actionButton} />
+          {user?.role === 'admin' ? (
+            <Button title="Payout Profile" onPress={() => navigation.navigate('PayoutProfile')} variant="outline" style={styles.actionButton} />
+          ) : null}
           <Button title="Edit Profile" onPress={() => Alert.alert('Coming Soon', 'Profile editing will be added next.')} variant="outline" style={styles.actionButton} />
           <Button title="Change Password" onPress={() => Alert.alert('Coming Soon', 'Password management will be added next.')} variant="outline" style={styles.actionButton} />
           <Button title="Logout" onPress={handleLogout} variant="secondary" />

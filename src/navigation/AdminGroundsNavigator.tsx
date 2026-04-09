@@ -4,6 +4,7 @@ import MyGroundsScreen from '../screens/admin/MyGroundsScreen';
 import AddGroundScreen from '../screens/admin/AddGroundScreen';
 import GroundDetailScreen from '../screens/admin/GroundDetailScreen';
 import EditGroundScreen from '../screens/admin/EditGroundScreen';
+import ManageSlotsScreen from '../screens/admin/ManageSlotsScreen';
 import { theme } from '../utils/theme';
 
 const Stack = createNativeStackNavigator();
@@ -44,6 +45,11 @@ export default function AdminGroundsNavigator() {
         name="EditGround"
         component={EditGroundScreen}
         options={{ title: 'Edit Turf' }}
+      />
+      <Stack.Screen
+        name="ManageSlots"
+        component={ManageSlotsScreen}
+        options={{ title: 'Manage Slots' }}
       />
     </Stack.Navigator>
   );

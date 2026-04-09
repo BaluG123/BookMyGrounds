@@ -2,14 +2,20 @@ import api from './client';
 
 export const bookingsAPI = {
   // Slots
-  listSlots: (groundId: string, date: string) =>
-    api.get('/bookings/slots/', { params: { ground: groundId, date } }),
+  listSlots: (groundId: string, date: string, bookableOnly?: boolean) =>
+    api.get('/bookings/slots/', {
+      params: {
+        ground: groundId,
+        date,
+        ...(bookableOnly !== undefined ? { bookable_only: bookableOnly } : {}),
+      },
+    }),
   createSlots: (data: any) => api.post('/bookings/slots/create/', data),
   updateSlot: (id: string, data: any) => api.patch(`/bookings/slots/${id}/`, data),
   deleteSlot: (id: string) => api.delete(`/bookings/slots/${id}/delete/`),
 
   // Bookings
-  list: () => api.get('/bookings/'),
+  list: (params?: any) => api.get('/bookings/', { params }),
   create: (data: any) => api.post('/bookings/', data),
   detail: (id: string) => api.get(`/bookings/${id}/`),
   cancel: (id: string, reason?: string) =>
@@ -20,6 +26,10 @@ export const bookingsAPI = {
     api.get('/bookings/admin-bookings/', { params }),
 
   // Payment
-  recordPayment: (bookingId: string, data: any) => 
+  createPaymentOrder: (bookingId: string, data?: any) =>
+    api.post(`/bookings/${bookingId}/payment-order/`, data),
+  verifyPayment: (bookingId: string, data: any) =>
+    api.post(`/bookings/${bookingId}/payment-verify/`, data),
+  recordPayment: (bookingId: string, data: any) =>
     api.post(`/bookings/${bookingId}/payment/`, data),
 };

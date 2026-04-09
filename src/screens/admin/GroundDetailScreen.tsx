@@ -93,6 +93,13 @@ export default function GroundDetailScreen() {
     });
   };
 
+  const handleManageSlots = () => {
+    navigation.navigate('ManageSlots', {
+      groundId,
+      ground,
+    });
+  };
+
   if (loading) {
     return (
       <ScreenContainer>
@@ -253,6 +260,12 @@ export default function GroundDetailScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
+          <Button
+            title="Manage Slots"
+            onPress={handleManageSlots}
+            variant="outline"
+            style={styles.manageBtn}
+          />
           <Button
             title="Edit Ground"
             onPress={handleEdit}
@@ -457,15 +470,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   actionButtons: {
-    flexDirection: 'row',
     padding: theme.spacing.m,
-    gap: theme.spacing.m,
+  },
+  manageBtn: {
+    marginBottom: theme.spacing.m,
   },
   editBtn: {
-    flex: 1,
+    marginBottom: theme.spacing.m,
   },
   deleteBtn: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

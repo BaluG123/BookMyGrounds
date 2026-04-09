@@ -5,6 +5,9 @@ export const groundsAPI = {
   list: (params?: any) => api.get('/grounds/', { params }),
   detail: (id: string) => api.get(`/grounds/${id}/`),
   amenities: () => api.get('/grounds/amenities/'),
+  availability: (id: string, date: string) =>
+    api.get(`/grounds/${id}/availability/`, { params: { date } }),
+  listImages: (groundId: string) => api.get(`/grounds/${groundId}/images/`),
 
   // Admin only
   create: (data: any) => api.post('/grounds/', data),

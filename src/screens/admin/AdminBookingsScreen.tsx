@@ -1,16 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { theme } from '../../utils/theme';
 import { bookingsAPI } from '../../api/bookings';
 
 export default function AdminBookingsScreen() {
+  const navigation = useNavigation<any>();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchRequests();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const fetchRequests = async () => {
     try {
@@ -28,11 +37,14 @@ export default function AdminBookingsScreen() {
     const confirmed = item.status === 'confirmed';
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.92}
+        onPress={() => navigation.navigate('AdminBookingDetail', { bookingId: item.id })}>
         <View style={styles.cardHeader}>
           <View style={styles.customerBlock}>
-            <Text style={styles.customerName}>{item.customer_name || 'Customer'}</Text>
-            <Text style={styles.details}>Turf: {item.ground?.name || 'Unknown turf'}</Text>
+            <Text style={styles.customerName}>{item.customer_info?.full_name || 'Customer'}</Text>
+            <Text style={styles.details}>Turf: {item.ground_name || 'Unknown turf'}</Text>
           </View>
           <View style={[styles.statusPill, confirmed ? styles.confirmedPill : styles.pendingPill]}>
             <Text style={[styles.statusText, confirmed ? styles.confirmedText : styles.pendingText]}>
@@ -43,7 +55,7 @@ export default function AdminBookingsScreen() {
         <Text style={styles.metaLine}>
           {item.booking_date} at {item.start_time?.substring(0, 5)}
         </Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 

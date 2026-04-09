@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { theme } from '../../utils/theme';
 import { bookingsAPI } from '../../api/bookings';
 import { groundsAPI } from '../../api/grounds';
 import { getErrorMessage } from '../../utils/error';
+import { Button } from '../../components/Button';
 
 export default function DashboardScreen() {
+  const navigation = useNavigation<any>();
   const [stats, setStats] = useState({
     revenue: 0,
     bookingsCompleted: 0,
@@ -114,6 +117,10 @@ export default function DashboardScreen() {
               ? `You have ${stats.pendingRequests} pending request${stats.pendingRequests > 1 ? 's' : ''}. Respond quickly to improve conversion.`
               : 'No pending requests right now. Focus on promoting your highest-rated slots and keeping availability current.'}
           </Text>
+          <View style={styles.actionRow}>
+            <Button title="Notifications" variant="outline" onPress={() => navigation.navigate('Notifications')} style={styles.actionBtn} />
+            <Button title="Payouts" variant="outline" onPress={() => navigation.navigate('PayoutProfile')} style={styles.actionBtn} />
+          </View>
         </View>
         <View style={styles.insightRow}>
           <View style={styles.microInsight}>
@@ -203,6 +210,14 @@ const styles = StyleSheet.create({
   insightText: {
     ...theme.typography.bodyM,
     color: theme.colors.textMuted,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.m,
+    marginTop: theme.spacing.l,
+  },
+  actionBtn: {
+    flex: 1,
   },
   insightRow: {
     flexDirection: 'row',

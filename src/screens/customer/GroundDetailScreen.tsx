@@ -16,6 +16,7 @@ export default function GroundDetailScreen() {
   
   const [ground, setGround] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   useEffect(() => {
     fetchDetail();
@@ -30,6 +31,36 @@ export default function GroundDetailScreen() {
       Alert.alert('Unable to load turf', getErrorMessage(error, 'Please refresh and try again.'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFavoriteToggle = async () => {
+    if (!ground) {
+      return;
+    }
+
+    try {
+      setFavoriteLoading(true);
+      if (ground.is_favorited) {
+        const favoritesRes = await groundsAPI.listFavorites();
+        const favorites = favoritesRes.data.results || favoritesRes.data || [];
+        const currentFavorite = favorites.find((item: any) => item.ground?.id === ground.id);
+
+        if (!currentFavorite) {
+          throw new Error('Favorite entry not found.');
+        }
+
+        await groundsAPI.removeFavorite(currentFavorite.id);
+        setGround((current: any) => ({ ...current, is_favorited: false }));
+        return;
+      }
+
+      await groundsAPI.addFavorite(ground.id);
+      setGround((current: any) => ({ ...current, is_favorited: true }));
+    } catch (error) {
+      Alert.alert('Favorite update failed', getErrorMessage(error, 'Please try again.'));
+    } finally {
+      setFavoriteLoading(false);
     }
   };
 
@@ -55,18 +86,35 @@ export default function GroundDetailScreen() {
         <View style={styles.content}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{ground.name}</Text>
-            <TouchableOpacity
-              style={styles.mapButton}
-              onPress={() =>
-                openCoordinatesInGoogleMaps({
-                  latitude: ground.latitude,
-                  longitude: ground.longitude,
-                  label: ground.name,
-                })
-              }
-              activeOpacity={0.85}>
-              <Icon name="map-outline" size={20} color={theme.colors.white} />
-            </TouchableOpacity>
+            <View style={styles.titleActions}>
+              <TouchableOpacity
+                style={[
+                  styles.favoriteButton,
+                  ground.is_favorited && styles.favoriteButtonActive,
+                  favoriteLoading && styles.iconButtonDisabled,
+                ]}
+                onPress={handleFavoriteToggle}
+                activeOpacity={0.85}
+                disabled={favoriteLoading}>
+                <Icon
+                  name={ground.is_favorited ? 'heart' : 'heart-outline'}
+                  size={20}
+                  color={ground.is_favorited ? theme.colors.white : theme.colors.primaryDark}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.mapButton}
+                onPress={() =>
+                  openCoordinatesInGoogleMaps({
+                    latitude: ground.latitude,
+                    longitude: ground.longitude,
+                    label: ground.name,
+                  })
+                }
+                activeOpacity={0.85}>
+                <Icon name="map-outline" size={20} color={theme.colors.white} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <Text style={styles.location}>
@@ -146,11 +194,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: theme.spacing.xs,
   },
+  titleActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   title: {
     ...theme.typography.h1,
     color: theme.colors.textMain,
     flex: 1,
     marginRight: theme.spacing.m,
+  },
+  favoriteButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: theme.colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.s,
+    ...theme.shadows.soft,
+  },
+  favoriteButtonActive: {
+    backgroundColor: theme.colors.error,
   },
   mapButton: {
     width: 46,
@@ -160,6 +225,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.soft,
+  },
+  iconButtonDisabled: {
+    opacity: 0.6,
   },
   location: {
     ...theme.typography.bodyM,

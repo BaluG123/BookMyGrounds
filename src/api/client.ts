@@ -39,7 +39,7 @@ api.interceptors.response.use(
     });
 
     if (error.response?.status === 401) {
-      await AsyncStorage.multiRemove(['auth_token', 'user_data']);
+      await AsyncStorage.multiRemove(['auth_token', 'user_data', 'push_token']);
       // Additional Redux dispatch for logout can be tied later via an event emitter or store export
       console.warn('Unauthorized! Token wiped.');
     }

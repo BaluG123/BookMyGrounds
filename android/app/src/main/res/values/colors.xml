@@ -1,0 +1,6 @@
+<resources>
+    <color name="splash_background">#07111F</color>
+    <color name="splash_orb_primary">#1E64F0</color>
+    <color name="splash_orb_secondary">#3DD9B4</color>
+    <color name="splash_text">#FFFFFF</color>
+</resources>

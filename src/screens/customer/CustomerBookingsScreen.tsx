@@ -1,17 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { theme } from '../../utils/theme';
 import { bookingsAPI } from '../../api/bookings';
+import { Button } from '../../components/Button';
 
 export default function CustomerBookingsScreen() {
+  const navigation = useNavigation<any>();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchBookings();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const fetchBookings = async () => {
     try {
@@ -27,13 +37,20 @@ export default function CustomerBookingsScreen() {
 
   const renderBooking = ({ item }: { item: any }) => {
     const confirmed = item.status === 'confirmed';
+    const paymentPending = item.outstanding_amount && Number(item.outstanding_amount) > 0;
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.92}
+        onPress={() => navigation.navigate('CustomerBookingDetail', { bookingId: item.id })}>
         <View style={styles.cardHeader}>
           <View>
-            <Text style={styles.groundName}>{item.ground?.name || 'Turf Booking'}</Text>
-            <Text style={styles.details}>{item.booking_date}</Text>
+            <Text style={styles.groundName}>{item.ground_name || 'Turf Booking'}</Text>
+            <Text style={styles.details}>
+              {item.booking_date}
+              {item.ground_city ? ` • ${item.ground_city}` : ''}
+            </Text>
           </View>
           <View style={[styles.statusPill, confirmed ? styles.statusConfirmed : styles.statusPending]}>
             <Text style={[styles.statusText, confirmed ? styles.statusTextConfirmed : styles.statusTextPending]}>
@@ -48,7 +65,20 @@ export default function CustomerBookingsScreen() {
             {item.start_time?.substring(0, 5)} - {item.end_time?.substring(0, 5)}
           </Text>
         </View>
-      </View>
+        <View style={styles.footerRow}>
+          <View>
+            <Text style={styles.amountLabel}>Outstanding</Text>
+            <Text style={styles.amountValue}>₹{item.outstanding_amount || '0.00'}</Text>
+          </View>
+          {paymentPending ? (
+            <Button title="Pay" onPress={() => navigation.navigate('Payment', { bookingId: item.id })} style={styles.payButton} />
+          ) : (
+            <View style={styles.paidPill}>
+              <Text style={styles.paidText}>Paid</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -137,6 +167,34 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyS,
     color: theme.colors.textMuted,
     marginLeft: theme.spacing.s,
+  },
+  footerRow: {
+    marginTop: theme.spacing.m,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  amountLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textSoft,
+  },
+  amountValue: {
+    ...theme.typography.h3,
+    color: theme.colors.textMain,
+    marginTop: 2,
+  },
+  payButton: {
+    minWidth: 110,
+  },
+  paidPill: {
+    backgroundColor: '#D9FBF3',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: theme.borderRadius.pill,
+  },
+  paidText: {
+    ...theme.typography.bodyS,
+    color: theme.colors.success,
   },
   statusPill: {
     paddingHorizontal: 12,

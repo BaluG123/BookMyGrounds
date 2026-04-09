@@ -16,11 +16,22 @@ export default function MyGroundsScreen() {
     fetchMyGrounds();
   }, []);
 
+  // Add focus listener to refresh when returning to screen
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchMyGrounds();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const fetchMyGrounds = async () => {
     try {
       setLoading(true);
       const res = await groundsAPI.myGrounds();
-      setGrounds(res.data.results || res.data);
+      const groundsData = res.data.results || res.data;
+      console.log('[MyGrounds] Fetched grounds:', groundsData.length);
+      console.log('[MyGrounds] First ground sample:', groundsData[0]);
+      setGrounds(groundsData);
     } catch (e) {
       console.log('Error fetching my grounds', e);
     } finally {
@@ -33,7 +44,7 @@ export default function MyGroundsScreen() {
       <Text style={styles.title}>My Turfs</Text>
       <Button 
         title="Add Turf +" 
-        onPress={() => console.log('Navigate to Add Ground')} 
+        onPress={() => navigation.navigate('AddGround')} 
         style={styles.addBtn}
       />
     </View>
@@ -48,7 +59,7 @@ export default function MyGroundsScreen() {
         renderItem={({ item }) => (
           <GroundCard 
             ground={item} 
-            onPress={() => console.log(`Manage ground ${item.id}`)} 
+            onPress={() => navigation.navigate('GroundDetail', { groundId: item.id })} 
           />
         )}
         contentContainerStyle={styles.listContainer}

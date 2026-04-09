@@ -1,0 +1,7 @@
+PATH: /usr/bin:/bin:/usr/sbin:/sbin
+---
+./debug_env.sh: line 4: npm: command not found
+---
+./debug_env.sh: line 7: adb: command not found
+---
+./debug_env.sh: line 10: emulator: command not found

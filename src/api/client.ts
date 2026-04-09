@@ -1,6 +1,9 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { Platform } from 'react-native';
+
+// Use PythonAnywhere server
 export const API_BASE_URL = 'https://bookmyground.pythonanywhere.com/api/v1';
 
 const api = axios.create({
@@ -15,6 +18,9 @@ api.interceptors.request.use(async (config) => {
     const token = await AsyncStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Token ${token}`;
+      console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.url} - Token: ${token.substring(0, 10)}...`);
+    } else {
+      console.warn('[API REQUEST] No auth token found!');
     }
   } catch (error) {
     console.error('Error fetching token:', error);
@@ -26,6 +32,13 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // DIAGNOSTIC LOG
+    console.log(`[API ERROR] ${error.config?.method?.toUpperCase()} ${error.config?.url}:`, {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+
     if (error.response?.status === 401) {
       await AsyncStorage.multiRemove(['auth_token', 'user_data']);
       // Additional Redux dispatch for logout can be tied later via an event emitter or store export

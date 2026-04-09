@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { theme } from '../utils/theme';
 import DashboardScreen from '../screens/admin/DashboardScreen';
-import MyGroundsScreen from '../screens/admin/MyGroundsScreen';
+import AdminGroundsNavigator from './AdminGroundsNavigator';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import AdminBookingsScreen from '../screens/admin/AdminBookingsScreen';
 
@@ -26,7 +26,7 @@ export default function AdminNavigator() {
         },
       })}>
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="MyGrounds" component={MyGroundsScreen} />
+      <Tab.Screen name="MyGrounds" component={AdminGroundsNavigator} />
       <Tab.Screen name="Bookings" component={AdminBookingsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

@@ -11,11 +11,24 @@ interface GroundProps {
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=600&auto=format&fit=crop';
 
 export const GroundCard: React.FC<GroundProps> = ({ ground, onPress }) => {
-  const imageUri = ground.images?.length > 0 ? ground.images[0].image : DEFAULT_IMAGE;
+  // Handle both list view (primary_image) and detail view (images array)
+  let imageUri = DEFAULT_IMAGE;
+  
+  if (ground.primary_image) {
+    imageUri = ground.primary_image;
+  } else if (ground.images?.length > 0) {
+    imageUri = ground.images[0].image;
+  }
+  
+  console.log('[GroundCard] Image URI:', imageUri, 'for ground:', ground.name);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
-      <Image source={{ uri: imageUri }} style={styles.image} />
+      <Image 
+        source={{ uri: imageUri }} 
+        style={styles.image}
+        onError={(e) => console.log('[GroundCard] Image load error for', ground.name, ':', e.nativeEvent.error)}
+      />
       
       <View style={styles.content}>
         <View style={styles.headerRow}>
@@ -32,10 +45,14 @@ export const GroundCard: React.FC<GroundProps> = ({ ground, onPress }) => {
 
         <View style={styles.detailsRow}>
           <View style={styles.typeTag}>
-            <Text style={styles.typeText}>{ground.ground_type}</Text>
+            <Text style={styles.typeText}>{ground.ground_type_display || ground.ground_type}</Text>
           </View>
           <Text style={styles.price}>
-            Starting at <Text style={styles.priceBold}>₹{ground.price || '500'}/hr</Text>
+            {ground.min_price ? (
+              <>Starting at <Text style={styles.priceBold}>₹{ground.min_price.amount}</Text></>
+            ) : (
+              <Text style={styles.priceBold}>Contact for price</Text>
+            )}
           </Text>
         </View>
       </View>

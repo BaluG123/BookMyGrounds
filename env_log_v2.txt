@@ -1,0 +1,12 @@
+PATH: /Users/apple/.codeium/windsurf/bin:/usr/local/opt/postgresql@14/bin:/Users/apple/.antigravity/antigravity/bin:/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/apple/Library/Android/sdk/emulator:/Users/apple/Library/Android/sdk/platform-tools:/Users/apple/Library/Android/sdk/tools:/Users/apple/Library/Android/sdk/tools/bin
+---
+/usr/local/bin/npm
+11.6.2
+---
+/Users/apple/Library/Android/sdk/platform-tools/adb
+List of devices attached
+emulator-5554	device
+
+---
+/Users/apple/Library/Android/sdk/emulator/emulator
+Medium_Phone_API_36.1

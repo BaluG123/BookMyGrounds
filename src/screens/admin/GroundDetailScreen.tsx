@@ -78,8 +78,6 @@ export default function GroundDetailScreen() {
           text: 'OK', 
           onPress: () => {
             navigation.navigate('MyGroundsList');
-            // Trigger refresh on the list screen
-            navigation.setParams({ refresh: Date.now() });
           }
         },
       ]);

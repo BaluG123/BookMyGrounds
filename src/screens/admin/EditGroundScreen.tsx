@@ -7,6 +7,8 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
+  Platform,
 } from 'react-native';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Input } from '../../components/Input';
@@ -16,6 +18,8 @@ import { groundsAPI } from '../../api/grounds';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MapPicker } from '../../components/MapPicker';
 import { AmenitySelector } from '../../components/AmenitySelector';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 const GROUND_TYPES = ['cricket', 'football', 'badminton', 'tennis', 'basketball', 'volleyball', 'hockey', 'multi_sport', 'other'];
 const SURFACE_TYPES = ['natural_grass', 'artificial_turf', 'clay', 'concrete', 'synthetic', 'wooden', 'other'];
@@ -48,6 +52,9 @@ export default function EditGroundScreen() {
   });
 
   const [selectedAmenities, setSelectedAmenities] = useState<number[]>([]);
+  const [existingImages, setExistingImages] = useState<any[]>([]);
+  const [newImages, setNewImages] = useState<any[]>([]);
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchGroundData();
@@ -80,6 +87,9 @@ export default function EditGroundScreen() {
 
       if (ground.amenities) {
         setSelectedAmenities(ground.amenities.map((a: any) => a.id));
+      }
+      if (ground.images) {
+        setExistingImages(ground.images);
       }
     } catch (e) {
       console.log('Error fetching ground data', e);
@@ -123,6 +133,27 @@ export default function EditGroundScreen() {
       
       const response = await groundsAPI.update(groundId, updateData);
       console.log('[DEBUG] Update response:', response);
+
+      // 2. Upload New Images if any
+      if (newImages.length > 0) {
+        console.log(`[DEBUG] Found ${newImages.length} new images to upload.`);
+        for (let i = 0; i < newImages.length; i++) {
+          const img = newImages[i];
+          const imageData = new FormData();
+          
+          const fileToUpload = {
+            uri: Platform.OS === 'android' ? img.uri : img.uri.replace('file://', ''),
+            name: img.fileName || `photo_${Date.now()}.jpg`,
+            type: img.type || 'image/jpeg',
+          };
+          
+          imageData.append('images', fileToUpload as any);
+          imageData.append('is_primary', 'false'); // Usually not primary for add-on images
+          
+          await groundsAPI.uploadImages(groundId, imageData);
+          console.log(`[DEBUG] New image ${i} uploaded successfully.`);
+        }
+      }
       
       Alert.alert('Success', 'Ground updated successfully!', [
         { 
@@ -149,6 +180,49 @@ export default function EditGroundScreen() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePickImages = async () => {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      selectionLimit: 5,
+      quality: 0.8,
+      includeBase64: false,
+    });
+
+    if (result.assets) {
+      setNewImages([...newImages, ...result.assets]);
+    }
+  };
+
+  const handleDeleteExistingImage = async (imageId: string) => {
+    Alert.alert(
+      'Delete Image',
+      'Are you sure you want to delete this image?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingImageId(imageId);
+              await groundsAPI.deleteImage(groundId, imageId);
+              setExistingImages(prev => prev.filter(img => img.id !== imageId));
+            } catch (e) {
+              console.log('Error deleting image', e);
+              Alert.alert('Error', 'Failed to delete image');
+            } finally {
+              setDeletingImageId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleRemoveNewImage = (index: number) => {
+    setNewImages(prev => prev.filter((_, i) => i !== index));
   };
 
   if (loading) {
@@ -317,6 +391,55 @@ export default function EditGroundScreen() {
           onChangeText={(v) => handleInputChange('cancellation_policy', v)}
         />
 
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Photos</Text>
+        
+        {/* Existing Images */}
+        {existingImages.length > 0 && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={styles.subLabel}>Current Photos ({existingImages.length})</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
+              {existingImages.map((img) => (
+                <View key={img.id} style={styles.imageWrapper}>
+                  <Image source={{ uri: img.image }} style={styles.thumbnail} />
+                  <TouchableOpacity 
+                    style={styles.deleteBadge} 
+                    onPress={() => handleDeleteExistingImage(img.id)}
+                    disabled={deletingImageId === img.id}
+                  >
+                    {deletingImageId === img.id ? (
+                      <ActivityIndicator size="small" color={theme.colors.white} />
+                    ) : (
+                      <Icon name="close" size={16} color={theme.colors.white} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* New Images */}
+        <TouchableOpacity style={styles.imagePicker} onPress={handlePickImages}>
+          <Icon name="camera-outline" size={32} color={theme.colors.primary} />
+          <Text style={styles.imagePickerText}>Add more photos</Text>
+        </TouchableOpacity>
+
+        {newImages.length > 0 && (
+          <View style={{ marginTop: 16 }}>
+            <Text style={styles.subLabel}>New Photos to Upload ({newImages.length})</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
+              {newImages.map((img, idx) => (
+                <View key={idx} style={styles.imageWrapper}>
+                  <Image source={{ uri: img.uri }} style={styles.thumbnail} />
+                  <TouchableOpacity style={styles.deleteBadge} onPress={() => handleRemoveNewImage(idx)}>
+                    <Icon name="close" size={16} color={theme.colors.white} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         <Button
           title={submitting ? "Updating..." : "Update Ground"}
           onPress={handleSubmit}
@@ -379,5 +502,55 @@ const styles = StyleSheet.create({
   submitBtn: {
     marginTop: 32,
     marginBottom: 40,
+  },
+  subLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    marginBottom: 8,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  imageScroll: {
+    flexDirection: 'row',
+  },
+  imageWrapper: {
+    marginRight: 12,
+    position: 'relative',
+  },
+  thumbnail: {
+    width: 100,
+    height: 100,
+    borderRadius: theme.borderRadius.m,
+  },
+  deleteBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: theme.colors.error,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  imagePicker: {
+    height: 100,
+    borderWidth: 2,
+    borderColor: theme.colors.primaryLight,
+    borderStyle: 'dashed',
+    borderRadius: theme.borderRadius.l,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primaryLight + '20',
+  },
+  imagePickerText: {
+    ...theme.typography.bodyS,
+    color: theme.colors.primary,
+    marginTop: 4,
   },
 });

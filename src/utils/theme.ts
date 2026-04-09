@@ -1,3 +1,7 @@
+import { Dimensions } from 'react-native';
+
+const { width, height } = Dimensions.get('window');
+
 export const theme = {
   colors: {
     primary: '#10B981', // Vibrant emerald green for sports
@@ -22,6 +26,8 @@ export const theme = {
     l: 24,
     xl: 32,
     xxl: 48,
+    screenWidth: width,
+    screenHeight: height,
   },
   typography: {
     h1: { fontSize: 32, fontWeight: '700' as const },

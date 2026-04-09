@@ -7,7 +7,7 @@ import {
   Alert,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Input } from '../../components/Input';
@@ -56,9 +56,12 @@ export default function AddGroundScreen() {
     const result = await launchImageLibrary({
       mediaType: 'photo',
       selectionLimit: 5,
+      quality: 0.8,
+      includeBase64: false,
     });
 
     if (result.assets) {
+      console.log('[DEBUG] Image picker result:', result.assets);
       setImages(result.assets);
     }
   };
@@ -95,42 +98,30 @@ export default function AddGroundScreen() {
       const groundId = res.data.id;
       console.log('[DEBUG] Ground created successfully with ID:', groundId);
 
-      // 2. Upload Images (optional)
+      // 2. Upload Images
       if (images.length > 0) {
         console.log(`[DEBUG] Found ${images.length} images to upload.`);
         for (let i = 0; i < images.length; i++) {
           const img = images[i];
-          console.log(`[DEBUG] Index ${i}: Preparing image upload for`, img.uri);
-          
           const imageData = new FormData();
-          imageData.append('image', {
-            uri: img.uri,
+          
+          // React Native file object format
+          const fileToUpload = {
+            uri: Platform.OS === 'android' ? img.uri : img.uri.replace('file://', ''),
+            name: img.fileName || `photo_${i}.jpg`,
             type: img.type || 'image/jpeg',
-            name: img.fileName || `ground_${Date.now()}_${i}.jpg`,
-          } as any);
+          };
+          
+          imageData.append('images', fileToUpload as any);
           imageData.append('is_primary', i === 0 ? 'true' : 'false');
-          imageData.append('caption', '');
           
-          console.log(`[DEBUG] FormData prepared:`, {
-            uri: img.uri,
-            type: img.type || 'image/jpeg',
-            name: img.fileName || `ground_${Date.now()}_${i}.jpg`,
-            is_primary: i === 0,
-          });
-          
-          try {
-            const imgRes = await groundsAPI.uploadImages(groundId, imageData);
-            console.log(`[DEBUG] Index ${i}: Image uploaded successfully.`, imgRes.data);
-          } catch (imgError: any) {
-            console.log(`[DEBUG] Index ${i}: Image upload failed:`, imgError.response?.data);
-            // Continue with other images even if one fails
-          }
+          console.log(`[DEBUG] Attempting upload for index ${i}...`);
+          await groundsAPI.uploadImages(groundId, imageData);
+          console.log(`[DEBUG] Image ${i} uploaded successfully.`);
         }
-      } else {
-        console.log('[DEBUG] No images selected, skipping image upload.');
       }
 
-      Alert.alert('Success', 'Turf created successfully!', [
+      Alert.alert('Success', 'Turf listed successfully with photos!', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (e: any) {

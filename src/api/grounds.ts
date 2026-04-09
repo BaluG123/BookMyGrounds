@@ -13,10 +13,13 @@ export const groundsAPI = {
   myGrounds: () => api.get('/grounds/my-grounds/'),
 
   // Images (multipart)
-  uploadImages: (groundId: string, formData: FormData) =>
-    api.post(`/grounds/${groundId}/images/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  uploadImages: (groundId: string, formData: FormData) => {
+    return api.post(`/grounds/${groundId}/images/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
   deleteImage: (groundId: string, imageId: string) =>
     api.delete(`/grounds/${groundId}/images/${imageId}/`),
 

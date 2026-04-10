@@ -35,7 +35,14 @@ export default function PayoutProfileScreen() {
         bank_name: res.data.bank_name || '',
         branch_name: res.data.branch_name || '',
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        Alert.alert(
+          'Payout profile unavailable',
+          'The current backend deployment does not expose the payout-profile endpoint yet. The app path is correct, so this needs a backend deploy/update.',
+        );
+        return;
+      }
       Alert.alert('Unable to load payout profile', getErrorMessage(error, 'Please try again.'));
     } finally {
       setLoading(false);
@@ -47,7 +54,14 @@ export default function PayoutProfileScreen() {
       setSaving(true);
       await authAPI.updatePayoutProfile(form);
       Alert.alert('Saved', 'Payout profile updated successfully.');
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        Alert.alert(
+          'Payout profile unavailable',
+          'The current backend deployment does not expose the payout-profile endpoint yet. Update the server and try again.',
+        );
+        return;
+      }
       Alert.alert('Save failed', getErrorMessage(error, 'Please review the payout details and try again.'));
     } finally {
       setSaving(false);

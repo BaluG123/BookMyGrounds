@@ -35,6 +35,28 @@ function formatTimeLabel(time?: string) {
   return time.slice(0, 5);
 }
 
+function resolveMatchingPricingPlan(ground: any, slot: any) {
+  const pricingPlans = ground?.pricing_plans || [];
+  const start = slot?.start_time;
+  const end = slot?.end_time;
+
+  if (!start || !end) {
+    return null;
+  }
+
+  const startHour = Number(start.slice(0, 2));
+  const startMinute = Number(start.slice(3, 5));
+  const endHour = Number(end.slice(0, 2));
+  const endMinute = Number(end.slice(3, 5));
+  const durationHours = ((endHour * 60 + endMinute) - (startHour * 60 + startMinute)) / 60;
+
+  return (
+    pricingPlans.find((plan: any) => Number(plan.duration_hours) === durationHours && plan.is_active) ||
+    pricingPlans.find((plan: any) => plan.duration_type === 'per_hour' && plan.is_active) ||
+    null
+  );
+}
+
 export default function SelectSlotScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -101,6 +123,7 @@ export default function SelectSlotScreen() {
   };
 
   const selectedSlotData = slots.find(slot => slot.id === selectedSlot);
+  const matchedPricingPlan = selectedSlotData ? resolveMatchingPricingPlan(ground, selectedSlotData) : null;
 
   const handleReserve = async () => {
     if (!ground || !selectedSlotData) {
@@ -109,9 +132,18 @@ export default function SelectSlotScreen() {
 
     try {
       setSubmitting(true);
+      if (!matchedPricingPlan) {
+        Alert.alert(
+          'Pricing missing',
+          'This turf does not have an active pricing plan for the selected slot duration. Add a pricing plan first, then try again.',
+        );
+        return;
+      }
+
       const response = await bookingsAPI.create({
         ground: ground.id,
         time_slot: selectedSlotData.id,
+        pricing_plan: matchedPricingPlan.id,
         booking_date: selectedDate,
         start_time: selectedSlotData.start_time,
         end_time: selectedSlotData.end_time,
@@ -219,10 +251,17 @@ export default function SelectSlotScreen() {
               ? `${formatTimeLabel(selectedSlotData.start_time)} - ${formatTimeLabel(selectedSlotData.end_time)}`
               : 'Choose a slot to continue'}
           </Text>
+          {selectedSlotData ? (
+            <Text style={styles.footerHint}>
+              {matchedPricingPlan
+                ? `Pricing plan: ${matchedPricingPlan.duration_display || matchedPricingPlan.duration_type}`
+                : 'No active pricing plan found for this slot duration.'}
+            </Text>
+          ) : null}
         </View>
         <Button
           title="Reserve Slot"
-          disabled={!selectedSlot}
+          disabled={!selectedSlot || !matchedPricingPlan}
           isLoading={submitting}
           onPress={handleReserve}
         />
@@ -351,5 +390,10 @@ const styles = StyleSheet.create({
   footerValue: {
     ...theme.typography.bodyM,
     color: theme.colors.textMain,
+  },
+  footerHint: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
   },
 });

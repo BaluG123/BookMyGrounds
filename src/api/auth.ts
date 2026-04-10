@@ -1,6 +1,30 @@
 import api from './client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+async function requestWithFallback(
+  method: 'get' | 'patch',
+  paths: string[],
+  data?: any,
+) {
+  let lastError: any;
+
+  for (const path of paths) {
+    try {
+      if (method === 'get') {
+        return await api.get(path);
+      }
+      return await api.patch(path, data);
+    } catch (error: any) {
+      lastError = error;
+      if (error?.response?.status !== 404) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 export const authAPI = {
   register: (data: any) => api.post('/auth/register/', data),
 
@@ -54,6 +78,18 @@ export const authAPI = {
     api.post('/auth/push/unregister/', { token }),
   listNotifications: (params?: any) => api.get('/auth/notifications/', { params }),
   markNotificationRead: (id: string) => api.patch(`/auth/notifications/${id}/read/`),
-  getPayoutProfile: () => api.get('/auth/payout-profile/'),
-  updatePayoutProfile: (data: any) => api.patch('/auth/payout-profile/', data),
+  getPayoutProfile: () =>
+    requestWithFallback('get', [
+      '/auth/payout-profile/',
+      '/payout-profile/',
+      '/auth/payout-profile',
+      '/payout-profile',
+    ]),
+  updatePayoutProfile: (data: any) =>
+    requestWithFallback('patch', [
+      '/auth/payout-profile/',
+      '/payout-profile/',
+      '/auth/payout-profile',
+      '/payout-profile',
+    ], data),
 };

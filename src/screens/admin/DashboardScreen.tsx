@@ -8,6 +8,7 @@ import { bookingsAPI } from '../../api/bookings';
 import { groundsAPI } from '../../api/grounds';
 import { getErrorMessage } from '../../utils/error';
 import { Button } from '../../components/Button';
+import { NotificationBell } from '../../components/NotificationBell';
 
 export default function DashboardScreen() {
   const navigation = useNavigation<any>();
@@ -77,9 +78,14 @@ export default function DashboardScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={fetchDashboardData} tintColor={theme.colors.primary} />
         }>
         <View style={styles.heroCard}>
-          <Text style={styles.eyebrow}>HOST CONSOLE</Text>
-          <Text style={styles.title}>Run your venue with a stronger presence.</Text>
-          <Text style={styles.subtitle}>Track live performance, bookings, and demand from one polished dashboard.</Text>
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroCopy}>
+              <Text style={styles.eyebrow}>HOST CONSOLE</Text>
+              <Text style={styles.title}>Run your venue with a stronger presence.</Text>
+              <Text style={styles.subtitle}>Track live performance, bookings, and demand from one polished dashboard.</Text>
+            </View>
+            <NotificationBell light />
+          </View>
         </View>
 
         <View style={styles.statsGrid}>
@@ -149,6 +155,15 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.s,
     marginBottom: theme.spacing.l,
     ...theme.shadows.strong,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: theme.spacing.m,
+  },
+  heroCopy: {
+    flex: 1,
   },
   eyebrow: {
     ...theme.typography.caption,

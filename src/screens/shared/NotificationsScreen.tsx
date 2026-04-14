@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { theme } from '../../utils/theme';
 import { authAPI } from '../../api/auth';
 import { getErrorMessage } from '../../utils/error';
 import { openFromNotification } from '../../navigation/navigationService';
+import { emitNotificationEvent, subscribeToNotificationEvents } from '../../utils/notificationEvents';
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<any>();
@@ -23,18 +24,7 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [unreadOnly]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchNotifications();
-    });
-    return unsubscribe;
-  }, [navigation, unreadOnly]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const firstLoad = notifications.length === 0 && !refreshing;
       if (firstLoad) {
@@ -52,7 +42,20 @@ export default function NotificationsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [notifications.length, refreshing, unreadOnly]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  useEffect(() => subscribeToNotificationEvents(fetchNotifications), [fetchNotifications]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchNotifications();
+    });
+    return unsubscribe;
+  }, [fetchNotifications, navigation]);
 
   const handleOpenNotification = async (item: any) => {
     try {
@@ -63,6 +66,7 @@ export default function NotificationsScreen() {
             notification.id === item.id ? { ...notification, is_read: true } : notification,
           ),
         );
+        emitNotificationEvent();
       }
       openFromNotification(item.data);
     } catch (error) {

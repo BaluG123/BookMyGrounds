@@ -1,8 +1,9 @@
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
 import { authAPI } from '../api/auth';
 import { openFromNotification } from '../navigation/navigationService';
+import { emitNotificationEvent } from './notificationEvents';
 
 const PUSH_TOKEN_STORAGE_KEY = 'push_token';
 
@@ -57,14 +58,31 @@ export async function initializePushNotifications() {
 
   const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
     console.log('Foreground push received', remoteMessage?.messageId || remoteMessage?.notification?.title);
+    emitNotificationEvent();
+
+    const title = remoteMessage?.notification?.title || 'New update';
+    const body = remoteMessage?.notification?.body || 'Open notifications to view the latest activity.';
+
+    Alert.alert(title, body, [
+      {
+        text: 'Later',
+        style: 'cancel',
+      },
+      {
+        text: 'View',
+        onPress: () => openFromNotification(remoteMessage?.data),
+      },
+    ]);
   });
 
   const unsubscribeOpened = messaging().onNotificationOpenedApp(remoteMessage => {
+    emitNotificationEvent();
     openFromNotification(remoteMessage?.data);
   });
 
   const initialNotification = await messaging().getInitialNotification();
   if (initialNotification?.data) {
+    emitNotificationEvent();
     setTimeout(() => {
       openFromNotification(initialNotification.data);
     }, 300);

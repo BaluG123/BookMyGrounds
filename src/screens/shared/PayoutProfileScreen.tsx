@@ -7,10 +7,69 @@ import { getErrorMessage } from '../../utils/error';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 
+const UPI_ID_REGEX = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/;
+const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const BANK_ACCOUNT_REGEX = /^\d{9,18}$/;
+
+type PayoutForm = {
+  account_holder_name: string;
+  bank_account_number: string;
+  ifsc_code: string;
+  upi_id: string;
+  bank_name: string;
+  branch_name: string;
+};
+
+type PayoutErrors = Partial<Record<keyof PayoutForm, string>>;
+
+const sanitizeForm = (form: PayoutForm): PayoutForm => ({
+  account_holder_name: form.account_holder_name.trim(),
+  bank_account_number: form.bank_account_number.replace(/\s+/g, ''),
+  ifsc_code: form.ifsc_code.trim().toUpperCase(),
+  upi_id: form.upi_id.trim().toLowerCase(),
+  bank_name: form.bank_name.trim(),
+  branch_name: form.branch_name.trim(),
+});
+
+const validateForm = (form: PayoutForm): PayoutErrors => {
+  const errors: PayoutErrors = {};
+  const hasUpi = Boolean(form.upi_id);
+  const hasBankDetails = Boolean(form.bank_account_number || form.ifsc_code || form.bank_name || form.branch_name);
+
+  if (!hasUpi && !hasBankDetails) {
+    errors.upi_id = 'Add a valid UPI ID or complete bank details.';
+  }
+
+  if (hasUpi && !UPI_ID_REGEX.test(form.upi_id)) {
+    errors.upi_id = 'Enter a valid UPI ID like name@bank.';
+  }
+
+  if (hasUpi && !form.account_holder_name) {
+    errors.account_holder_name = 'Enter the payee name customers should see in UPI apps.';
+  }
+
+  if (hasBankDetails) {
+    if (!form.account_holder_name) {
+      errors.account_holder_name = 'Account holder name is required for bank payouts.';
+    }
+    if (!BANK_ACCOUNT_REGEX.test(form.bank_account_number)) {
+      errors.bank_account_number = 'Enter a valid account number.';
+    }
+    if (!IFSC_REGEX.test(form.ifsc_code)) {
+      errors.ifsc_code = 'Enter a valid IFSC code.';
+    }
+    if (!form.bank_name) {
+      errors.bank_name = 'Bank name is required for bank payouts.';
+    }
+  }
+
+  return errors;
+};
+
 export default function PayoutProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PayoutForm>({
     account_holder_name: '',
     bank_account_number: '',
     ifsc_code: '',
@@ -18,6 +77,7 @@ export default function PayoutProfileScreen() {
     bank_name: '',
     branch_name: '',
   });
+  const [errors, setErrors] = useState<PayoutErrors>({});
 
   useEffect(() => {
     fetchProfile();
@@ -27,14 +87,14 @@ export default function PayoutProfileScreen() {
     try {
       setLoading(true);
       const res = await authAPI.getPayoutProfile();
-      setForm({
+      setForm(sanitizeForm({
         account_holder_name: res.data.account_holder_name || '',
         bank_account_number: res.data.bank_account_number || '',
         ifsc_code: res.data.ifsc_code || '',
         upi_id: res.data.upi_id || '',
         bank_name: res.data.bank_name || '',
         branch_name: res.data.branch_name || '',
-      });
+      }));
     } catch (error: any) {
       if (error?.response?.status === 404) {
         Alert.alert(
@@ -50,9 +110,20 @@ export default function PayoutProfileScreen() {
   };
 
   const handleSave = async () => {
+    const sanitized = sanitizeForm(form);
+    const validationErrors = validateForm(sanitized);
+
+    setForm(sanitized);
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      Alert.alert('Invalid payout details', 'Fix the highlighted payout fields before saving.');
+      return;
+    }
+
     try {
       setSaving(true);
-      await authAPI.updatePayoutProfile(form);
+      await authAPI.updatePayoutProfile(sanitized);
       Alert.alert('Saved', 'Payout profile updated successfully.');
     } catch (error: any) {
       if (error?.response?.status === 404) {
@@ -79,34 +150,56 @@ export default function PayoutProfileScreen() {
 
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Payout details</Text>
+          <Text style={styles.sectionHint}>The account holder name is used as the payee name shown inside Google Pay, PhonePe, and other UPI apps.</Text>
 
           <Input
             label="Account Holder Name"
             value={form.account_holder_name}
-            onChangeText={value => setForm(current => ({ ...current, account_holder_name: value }))}
+            error={errors.account_holder_name}
+            onChangeText={value => {
+              setErrors(current => ({ ...current, account_holder_name: undefined }));
+              setForm(current => ({ ...current, account_holder_name: value }));
+            }}
           />
           <Input
             label="UPI ID"
             value={form.upi_id}
-            onChangeText={value => setForm(current => ({ ...current, upi_id: value }))}
+            error={errors.upi_id}
+            autoCapitalize="none"
+            onChangeText={value => {
+              setErrors(current => ({ ...current, upi_id: undefined }));
+              setForm(current => ({ ...current, upi_id: value }));
+            }}
             placeholder="name@bank"
           />
           <Input
             label="Bank Account Number"
             value={form.bank_account_number}
-            onChangeText={value => setForm(current => ({ ...current, bank_account_number: value }))}
+            error={errors.bank_account_number}
+            onChangeText={value => {
+              setErrors(current => ({ ...current, bank_account_number: undefined }));
+              setForm(current => ({ ...current, bank_account_number: value }));
+            }}
             keyboardType="number-pad"
           />
           <Input
             label="IFSC Code"
             value={form.ifsc_code}
             autoCapitalize="characters"
-            onChangeText={value => setForm(current => ({ ...current, ifsc_code: value.toUpperCase() }))}
+            error={errors.ifsc_code}
+            onChangeText={value => {
+              setErrors(current => ({ ...current, ifsc_code: undefined }));
+              setForm(current => ({ ...current, ifsc_code: value.toUpperCase() }));
+            }}
           />
           <Input
             label="Bank Name"
             value={form.bank_name}
-            onChangeText={value => setForm(current => ({ ...current, bank_name: value }))}
+            error={errors.bank_name}
+            onChangeText={value => {
+              setErrors(current => ({ ...current, bank_name: undefined }));
+              setForm(current => ({ ...current, bank_name: value }));
+            }}
           />
           <Input
             label="Branch Name"
@@ -158,6 +251,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...theme.typography.h3,
     color: theme.colors.textMain,
+    marginBottom: theme.spacing.l,
+  },
+  sectionHint: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMuted,
     marginBottom: theme.spacing.l,
   },
 });

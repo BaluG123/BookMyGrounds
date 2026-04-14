@@ -7,6 +7,7 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { theme } from '../../utils/theme';
 import { authAPI } from '../../api/auth';
+import { getErrorMessage } from '../../utils/error';
 
 export default function RegisterScreen() {
   const navigation = useNavigation<any>();
@@ -36,19 +37,16 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (form.password !== form.password_confirm) {
-      return Alert.alert('Error', 'Passwords do not match');
+      return Alert.alert('Password mismatch', 'Password and confirm password must match.');
     }
 
     try {
       setLoading(true);
       await authAPI.register(form);
-      Alert.alert('Success', 'Registered successfully. Please login with your new account.');
+      Alert.alert('Account created', 'Registered successfully. Please login with your new account.');
       navigation.navigate('Login');
     } catch (error: any) {
-      Alert.alert(
-        'Registration Failed',
-        error.response?.data?.message || 'Check your details and try again.',
-      );
+      Alert.alert('Registration failed', getErrorMessage(error, 'Check your details and try again.'));
     } finally {
       setLoading(false);
     }

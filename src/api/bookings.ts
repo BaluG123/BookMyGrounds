@@ -28,6 +28,8 @@ export const bookingsAPI = {
   // Payment
   createPaymentOrder: (bookingId: string, data?: any) =>
     api.post(`/bookings/${bookingId}/payment-order/`, data),
+  createUpiIntent: (bookingId: string, data?: any) =>
+    api.post(`/bookings/${bookingId}/upi-intent/`, data),
   verifyPayment: (bookingId: string, data: any) =>
     api.post(`/bookings/${bookingId}/payment-verify/`, data),
   recordPayment: (bookingId: string, data: any) =>

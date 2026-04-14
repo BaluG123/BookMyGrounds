@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -27,19 +27,7 @@ export default function GroundDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    fetchGroundDetail();
-  }, [groundId]);
-
-  // Refresh when screen comes into focus
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchGroundDetail();
-    });
-    return unsubscribe;
-  }, [navigation]);
-
-  const fetchGroundDetail = async () => {
+  const fetchGroundDetail = useCallback(async () => {
     try {
       setLoading(true);
       const res = await groundsAPI.detail(groundId);
@@ -49,7 +37,19 @@ export default function GroundDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [groundId]);
+
+  useEffect(() => {
+    fetchGroundDetail();
+  }, [fetchGroundDetail]);
+
+  // Refresh when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchGroundDetail();
+    });
+    return unsubscribe;
+  }, [fetchGroundDetail, navigation]);
 
   const handleDelete = () => {
     Alert.alert(
@@ -95,6 +95,13 @@ export default function GroundDetailScreen() {
 
   const handleManageSlots = () => {
     navigation.navigate('ManageSlots', {
+      groundId,
+      ground,
+    });
+  };
+
+  const handleManagePricing = () => {
+    navigation.navigate('ManagePricing', {
       groundId,
       ground,
     });
@@ -202,6 +209,10 @@ export default function GroundDetailScreen() {
         {/* Ground Details */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ground Details</Text>
+          <DetailRow label="Review Status" value={ground.verification_status_display || 'Pending Review'} />
+          {ground.rejection_reason ? (
+            <DetailRow label="Review Note" value={ground.rejection_reason} />
+          ) : null}
           <DetailRow label="Type" value={ground.ground_type_display} />
           <DetailRow label="Surface" value={ground.surface_type_display} />
           <DetailRow label="Max Players" value={ground.max_players?.toString()} />
@@ -260,6 +271,12 @@ export default function GroundDetailScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
+          <Button
+            title="Manage Pricing"
+            onPress={handleManagePricing}
+            variant="outline"
+            style={styles.manageBtn}
+          />
           <Button
             title="Manage Slots"
             onPress={handleManageSlots}

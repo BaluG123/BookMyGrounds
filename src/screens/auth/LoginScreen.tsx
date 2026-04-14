@@ -11,6 +11,7 @@ import { Button } from '../../components/Button';
 import { authAPI } from '../../api/auth';
 import { setCredentials } from '../../store/slices/authSlice';
 import { theme } from '../../utils/theme';
+import { getErrorMessage } from '../../utils/error';
 
 GoogleSignin.configure({
   webClientId: '614899789202-l1ujssb8k8odq4tge5273v6k45j8usfj.apps.googleusercontent.com',
@@ -26,7 +27,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      return Alert.alert('Error', 'Please fill all fields');
+      return Alert.alert('Missing details', 'Enter both email and password to continue.');
     }
 
     try {
@@ -34,7 +35,7 @@ export default function LoginScreen() {
       const res = await authAPI.login(email, password);
       dispatch(setCredentials({ token: res.token, user: res.user }));
     } catch (error: any) {
-      Alert.alert('Login Failed', error.response?.data?.detail || 'Something went wrong');
+      Alert.alert('Login failed', getErrorMessage(error, 'Please check your credentials and try again.'));
     } finally {
       setLoading(false);
     }
@@ -61,7 +62,7 @@ export default function LoginScreen() {
       const res = await authAPI.firebaseLogin(firebaseToken, 'customer');
       dispatch(setCredentials({ token: res.token, user: res.user }));
     } catch (error: any) {
-      Alert.alert('Google Sign-In Failed', error.message);
+      Alert.alert('Google sign-in failed', getErrorMessage(error, 'Unable to complete Google sign-in right now.'));
     } finally {
       setGoogleLoading(false);
     }

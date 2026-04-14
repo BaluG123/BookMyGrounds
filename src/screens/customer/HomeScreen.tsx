@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { GroundCard } from '../../components/GroundCard';
+import { NotificationBell } from '../../components/NotificationBell';
 import { theme } from '../../utils/theme';
 import { AppDispatch, RootState } from '../../store';
 import { groundsAPI } from '../../api/grounds';
@@ -16,11 +17,7 @@ export default function HomeScreen() {
   const { groundsList, isLoading } = useSelector((state: RootState) => state.grounds);
   const { user } = useSelector((state: RootState) => state.auth);
 
-  useEffect(() => {
-    fetchGrounds();
-  }, []);
-
-  const fetchGrounds = async () => {
+  const fetchGrounds = useCallback(async () => {
     try {
       dispatch(setLoading(true));
       const res = await groundsAPI.list({ ordering: '-avg_rating' });
@@ -30,16 +27,25 @@ export default function HomeScreen() {
     } finally {
       dispatch(setLoading(false));
     }
-  };
+  }, [dispatch]);
+
+  useEffect(() => {
+    fetchGrounds();
+  }, [fetchGrounds]);
 
   const featuredCount = groundsList.length;
 
   const renderHeader = () => (
     <View>
       <View style={styles.heroCard}>
-        <Text style={styles.eyebrow}>TODAY'S PLAYBOOK</Text>
-        <Text style={styles.greeting}>Hi {user?.full_name?.split(' ')[0] || 'Player'}, find your next winning turf.</Text>
-        <Text style={styles.subtitle}>Curated venues, premium surfaces, and smoother bookings in one place.</Text>
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroCopy}>
+            <Text style={styles.eyebrow}>TODAY'S PLAYBOOK</Text>
+            <Text style={styles.greeting}>Hi {user?.full_name?.split(' ')[0] || 'Player'}, find your next winning turf.</Text>
+            <Text style={styles.subtitle}>Curated venues, premium surfaces, and smoother bookings in one place.</Text>
+          </View>
+          <NotificationBell light />
+        </View>
 
         <View style={styles.heroMetrics}>
           <View style={styles.metricCard}>
@@ -102,6 +108,15 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.s,
     marginBottom: theme.spacing.l,
     ...theme.shadows.strong,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: theme.spacing.m,
+  },
+  heroCopy: {
+    flex: 1,
   },
   eyebrow: {
     ...theme.typography.caption,

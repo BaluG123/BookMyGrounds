@@ -19,6 +19,7 @@ import { MapPicker } from '../../components/MapPicker';
 import { AmenitySelector } from '../../components/AmenitySelector';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { getErrorMessage } from '../../utils/error';
 
 const GROUND_TYPES = ['cricket', 'football', 'badminton', 'tennis', 'basketball', 'volleyball', 'hockey', 'multi_sport', 'other'];
 const SURFACE_TYPES = ['natural_grass', 'artificial_turf', 'clay', 'concrete', 'synthetic', 'wooden', 'other'];
@@ -78,7 +79,7 @@ export default function AddGroundScreen() {
   const handleSubmit = async () => {
     const error = validateForm();
     if (error) {
-      Alert.alert('Validation Error', error);
+      Alert.alert('Missing ground details', error);
       return;
     }
 
@@ -87,9 +88,8 @@ export default function AddGroundScreen() {
       
       const groundData = {
         ...formData,
-        max_players: parseInt(formData.max_players),
+        max_players: parseInt(formData.max_players, 10),
         amenity_ids: selectedAmenities,
-        is_active: true,
       };
 
       console.log('[DEBUG] Starting ground creation with data:', groundData);
@@ -121,7 +121,7 @@ export default function AddGroundScreen() {
         }
       }
 
-      Alert.alert('Success', 'Turf listed successfully with photos!', [
+      Alert.alert('Submitted', 'Your turf was submitted for review. It will go live after platform verification.', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (e: any) {
@@ -130,7 +130,7 @@ export default function AddGroundScreen() {
         console.log('[DEBUG] Response status:', e.response.status);
         console.log('[DEBUG] Response data:', e.response.data);
       }
-      Alert.alert('Error', e.response?.data?.message || 'Failed to create turf');
+      Alert.alert('Submission failed', getErrorMessage(e, 'Failed to create turf.'));
     } finally {
       setLoading(false);
     }

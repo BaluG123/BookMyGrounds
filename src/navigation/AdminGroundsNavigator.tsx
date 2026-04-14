@@ -5,6 +5,7 @@ import AddGroundScreen from '../screens/admin/AddGroundScreen';
 import GroundDetailScreen from '../screens/admin/GroundDetailScreen';
 import EditGroundScreen from '../screens/admin/EditGroundScreen';
 import ManageSlotsScreen from '../screens/admin/ManageSlotsScreen';
+import ManagePricingScreen from '../screens/admin/ManagePricingScreen';
 import { theme } from '../utils/theme';
 
 const Stack = createNativeStackNavigator();
@@ -50,6 +51,11 @@ export default function AdminGroundsNavigator() {
         name="ManageSlots"
         component={ManageSlotsScreen}
         options={{ title: 'Manage Slots' }}
+      />
+      <Stack.Screen
+        name="ManagePricing"
+        component={ManagePricingScreen}
+        options={{ title: 'Manage Pricing' }}
       />
     </Stack.Navigator>
   );

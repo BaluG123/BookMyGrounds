@@ -30,10 +30,22 @@ export const GroundCard: React.FC<GroundProps> = ({ ground, onPress }) => {
               {ground?.ground_type_display || ground?.ground_type || 'Turf'}
             </Text>
           </View>
-          <View style={styles.ratingBadge}>
-            <Icon name="star" size={14} color={theme.colors.accent} />
-            <Text style={styles.ratingText}>{ground?.avg_rating || 'New'}</Text>
-          </View>
+          {ground?.verification_status && ground?.verification_status !== 'approved' ? (
+            <View
+              style={[
+                styles.statusBadge,
+                ground?.verification_status === 'rejected' ? styles.statusRejected : styles.statusPending,
+              ]}>
+              <Text style={styles.statusBadgeText}>
+                {ground?.verification_status_display || ground?.verification_status}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.ratingBadge}>
+              <Icon name="star" size={14} color={theme.colors.accent} />
+              <Text style={styles.ratingText}>{ground?.avg_rating || 'New'}</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -114,6 +126,22 @@ const styles = StyleSheet.create({
     ...theme.typography.caption,
     color: theme.colors.textMain,
     marginLeft: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: theme.borderRadius.pill,
+  },
+  statusPending: {
+    backgroundColor: 'rgba(255,209,102,0.92)',
+  },
+  statusRejected: {
+    backgroundColor: 'rgba(255,107,107,0.92)',
+  },
+  statusBadgeText: {
+    ...theme.typography.caption,
+    color: theme.colors.textMain,
+    fontWeight: '700',
   },
   content: {
     padding: theme.spacing.m,

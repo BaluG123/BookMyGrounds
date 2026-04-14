@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Linking, AppState } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import RazorpayCheckout from 'react-native-razorpay';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -24,32 +24,17 @@ export default function PaymentScreen() {
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [openingUpi, setOpeningUpi] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [upiSession, setUpiSession] = useState<any>(null);
   const [selectedMethod, setSelectedMethod] = useState<'online' | 'upi' | 'cash' | 'card'>('online');
   const [form, setForm] = useState({
     amount: '',
     transaction_id: '',
   });
+  const appStateRef = useRef(AppState.currentState);
 
-  useEffect(() => {
-    if (!bookingId) {
-      Alert.alert('Missing booking', 'No booking was selected.');
-      navigation.goBack();
-      return;
-    }
-    fetchBooking();
-  }, [bookingId, navigation]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (bookingId) {
-        fetchBooking();
-      }
-    });
-    return unsubscribe;
-  }, [navigation, bookingId]);
-
-  const fetchBooking = async () => {
+  const fetchBooking = useCallback(async () => {
     try {
       setLoading(true);
       const res = await bookingsAPI.detail(bookingId);
@@ -64,13 +49,53 @@ export default function PaymentScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (!bookingId) {
+      Alert.alert('Missing booking', 'No booking was selected.');
+      navigation.goBack();
+      return;
+    }
+    fetchBooking();
+  }, [bookingId, fetchBooking, navigation]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (bookingId) {
+        fetchBooking();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, bookingId, fetchBooking]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      const previousState = appStateRef.current;
+      appStateRef.current = nextState;
+
+      if ((previousState === 'background' || previousState === 'inactive') && nextState === 'active' && upiSession) {
+        Alert.alert(
+          'Back from UPI app',
+          `If you completed the payment to ${upiSession.payee_name}, enter the UPI reference number below and tap "Record Confirmed Payment".`,
+        );
+      }
+    });
+
+    return () => subscription.remove();
+  }, [upiSession]);
 
   const handleRazorpayCheckout = async () => {
+    const payableAmount = Number(form.amount || booking?.outstanding_amount || 0);
+    if (!payableAmount || payableAmount <= 0) {
+      Alert.alert('Amount required', 'Enter a valid payment amount before starting checkout.');
+      return;
+    }
+
     try {
       setPaying(true);
       const orderRes = await bookingsAPI.createPaymentOrder(bookingId, {
-        amount: Number(form.amount || booking?.outstanding_amount || 0),
+        amount: payableAmount,
       });
 
       const orderPayload = orderRes.data;
@@ -112,6 +137,7 @@ export default function PaymentScreen() {
       ]);
     } catch (error: any) {
       const fallback =
+        error?.response?.data?.error ||
         error?.description ||
         error?.error?.description ||
         error?.message ||
@@ -122,9 +148,46 @@ export default function PaymentScreen() {
     }
   };
 
+  const handleUpiPayment = async () => {
+    const payableAmount = Number(form.amount || booking?.outstanding_amount || 0);
+    if (!payableAmount || payableAmount <= 0) {
+      Alert.alert('Amount required', 'Enter a valid payment amount before opening the UPI app.');
+      return;
+    }
+
+    try {
+      setOpeningUpi(true);
+      const response = await bookingsAPI.createUpiIntent(bookingId, {
+        amount: payableAmount,
+      });
+
+      const payload = response.data;
+      if (!payload?.upi_uri) {
+        throw new Error('UPI payment link was not returned by the server.');
+      }
+
+      setUpiSession(payload);
+      await Linking.openURL(payload.upi_uri);
+      setSelectedMethod('upi');
+      Alert.alert(
+        'UPI app opened',
+        `Pay ${payload.amount} to ${payload.payee_name}. After the payment succeeds, return here and enter the UPI reference number to record it.`,
+      );
+    } catch (error: any) {
+      Alert.alert('Unable to open UPI app', getErrorMessage(error, 'No supported UPI app was available on this device.'));
+    } finally {
+      setOpeningUpi(false);
+    }
+  };
+
   const handleRecordPayment = async () => {
     if (!form.amount) {
       Alert.alert('Amount required', 'Enter the payment amount before continuing.');
+      return;
+    }
+
+    if (selectedMethod !== 'cash' && !form.transaction_id.trim()) {
+      Alert.alert('Reference required', 'Enter the UPI, card, or gateway transaction ID before recording this payment.');
       return;
     }
 
@@ -133,14 +196,17 @@ export default function PaymentScreen() {
       await bookingsAPI.recordPayment(bookingId, {
         amount: Number(form.amount),
         payment_method: selectedMethod,
-        transaction_id: form.transaction_id || undefined,
+        transaction_id: form.transaction_id.trim() || undefined,
         status: 'success',
         gateway_response: {
           source: 'react_native_manual_payment_screen',
         },
       });
       await fetchBooking();
-      Alert.alert('Payment recorded', 'The booking payment was recorded successfully.');
+      Alert.alert(
+        'Payment recorded',
+        'This entry was saved as an already-confirmed payment. Use Razorpay checkout when the customer still needs to pay.',
+      );
     } catch (error) {
       Alert.alert('Payment failed', getErrorMessage(error, 'Unable to record the payment.'));
     } finally {
@@ -156,6 +222,8 @@ export default function PaymentScreen() {
     );
   }
 
+  const outstandingAmount = Number(booking.outstanding_amount || 0);
+
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -163,7 +231,7 @@ export default function PaymentScreen() {
           <Text style={styles.eyebrow}>PAYMENT DESK</Text>
           <Text style={styles.title}>Settle this booking cleanly.</Text>
           <Text style={styles.subtitle}>
-            Use Razorpay checkout for online payment or record an already-collected payment manually.
+            Use Razorpay checkout for live payment. Direct UPI handoff and manual entry only help you record a payment after it is completed.
           </Text>
         </View>
 
@@ -187,7 +255,7 @@ export default function PaymentScreen() {
           </Text>
         </View>
 
-        {Number(booking.outstanding_amount || 0) > 0 ? (
+        {outstandingAmount > 0 ? (
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Razorpay checkout</Text>
             <Text style={styles.sectionCopy}>This opens the real SDK checkout and verifies the result with your backend.</Text>
@@ -195,9 +263,34 @@ export default function PaymentScreen() {
           </View>
         ) : null}
 
+        {outstandingAmount > 0 ? (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Pay via UPI app</Text>
+            <Text style={styles.sectionCopy}>
+              This opens Google Pay, PhonePe, BHIM, or another installed UPI app using the owner&apos;s saved UPI ID and payee name. After the transfer succeeds, you still need to record the UPI reference below.
+            </Text>
+            {upiSession ? (
+              <View style={styles.upiPreviewCard}>
+                <Text style={styles.upiPreviewLabel}>Payee name</Text>
+                <Text style={styles.upiPreviewValue}>{upiSession.payee_name}</Text>
+                {upiSession.bank_name ? (
+                  <>
+                    <Text style={styles.upiPreviewLabel}>Bank name</Text>
+                    <Text style={styles.upiPreviewValue}>{upiSession.bank_name}</Text>
+                  </>
+                ) : null}
+                <Text style={styles.upiPreviewLabel}>UPI ID</Text>
+                <Text style={styles.upiPreviewValue}>{upiSession.upi_id}</Text>
+                <Text style={styles.upiPreviewMeta}>Amount: ₹{upiSession.amount}</Text>
+              </View>
+            ) : null}
+            <Button title="Open UPI App" onPress={handleUpiPayment} isLoading={openingUpi} variant="secondary" />
+          </View>
+        ) : null}
+
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Manual payment entry</Text>
-          <Text style={styles.sectionCopy}>Use this for cash, UPI, card, or backend-confirmed collections.</Text>
+          <Text style={styles.sectionCopy}>Use this only after you have already received the money offline or you have a confirmed UPI, card, or gateway reference ID.</Text>
 
           <Input
             label="Amount"
@@ -227,7 +320,7 @@ export default function PaymentScreen() {
             })}
           </View>
 
-          <Button title="Record Successful Payment" onPress={handleRecordPayment} isLoading={recording} />
+          <Button title="Record Confirmed Payment" onPress={handleRecordPayment} isLoading={recording} />
         </View>
 
         {booking.payments?.length ? (
@@ -332,6 +425,29 @@ const styles = StyleSheet.create({
     ...theme.typography.h2,
     color: theme.colors.textMain,
     marginTop: theme.spacing.s,
+  },
+  upiPreviewCard: {
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.l,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: theme.spacing.m,
+    marginBottom: theme.spacing.l,
+  },
+  upiPreviewLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textSoft,
+    marginBottom: theme.spacing.xs,
+  },
+  upiPreviewValue: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMain,
+    marginBottom: theme.spacing.s,
+    fontWeight: '700',
+  },
+  upiPreviewMeta: {
+    ...theme.typography.bodyS,
+    color: theme.colors.primaryDark,
   },
   statusText: {
     ...theme.typography.bodyS,

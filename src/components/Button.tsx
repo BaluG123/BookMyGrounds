@@ -7,6 +7,7 @@ import {
   ViewStyle,
   TextStyle,
   StyleProp,
+  View,
 } from 'react-native';
 import { theme } from '../utils/theme';
 
@@ -18,6 +19,7 @@ interface ButtonProps {
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  icon?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -28,6 +30,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   style,
   textStyle,
+  icon,
 }) => {
   const isOutline = variant === 'outline';
   const isText = variant === 'text';
@@ -64,7 +67,10 @@ export const Button: React.FC<ButtonProps> = ({
       {isLoading ? (
         <ActivityIndicator color={getTextColor()} />
       ) : (
-        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>{title}</Text>
+        <View style={styles.content}>
+          {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
+          <Text style={[styles.text, { color: getTextColor() }, textStyle]}>{title}</Text>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -86,6 +92,14 @@ const styles = StyleSheet.create({
     minHeight: 40,
     paddingHorizontal: 0,
     alignItems: 'flex-start',
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrap: {
+    marginRight: 10,
   },
   text: {
     ...theme.typography.bodyM,

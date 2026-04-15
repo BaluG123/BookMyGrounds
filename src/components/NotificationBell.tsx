@@ -25,7 +25,8 @@ export function NotificationBell({ light = false }: { light?: boolean }) {
 
   useEffect(() => {
     fetchUnreadCount();
-    return subscribeToNotificationEvents(fetchUnreadCount);
+    const unsubscribe = subscribeToNotificationEvents(fetchUnreadCount);
+    return () => { unsubscribe(); };
   }, [fetchUnreadCount]);
 
   return (

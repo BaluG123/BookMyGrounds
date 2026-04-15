@@ -48,7 +48,10 @@ export default function NotificationsScreen() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  useEffect(() => subscribeToNotificationEvents(fetchNotifications), [fetchNotifications]);
+  useEffect(() => {
+    const unsubscribe = subscribeToNotificationEvents(fetchNotifications);
+    return () => { unsubscribe(); };
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {

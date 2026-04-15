@@ -24,6 +24,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -71,6 +72,14 @@ export default function LoginScreen() {
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Brand Badge */}
+        <View style={styles.brandRow}>
+          <View style={styles.brandBadge}>
+            <Text style={styles.brandBadgeText}>BG</Text>
+          </View>
+        </View>
+
+        {/* Hero Card */}
         <View style={styles.heroCard}>
           <Text style={styles.eyebrow}>BOOK SMARTER</Text>
           <Text style={styles.title}>Your next game night starts here.</Text>
@@ -89,6 +98,7 @@ export default function LoginScreen() {
           </View>
         </View>
 
+        {/* Form Card */}
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Welcome back</Text>
           <Text style={styles.formSubtitle}>Sign in and continue where you left off.</Text>
@@ -105,13 +115,25 @@ export default function LoginScreen() {
           <Input
             label="Password"
             placeholder="Enter password"
-            secureTextEntry
+            secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
             leftIcon={<Icon name="lock-closed-outline" size={20} color={theme.colors.textSoft} />}
           />
 
-          <Button title="Login" onPress={handleLogin} isLoading={loading} style={styles.primaryButton} />
+          {/* Forgot Password */}
+          <TouchableOpacity
+            style={styles.forgotRow}
+            onPress={() => Alert.alert(
+              'Reset Password',
+              'To reset your password, please contact support at help@bookmygrounds.in or use the "Change Password" option after logging in.',
+            )}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          <Button title="Sign In" onPress={handleLogin} isLoading={loading} style={styles.primaryButton} />
 
           <View style={styles.dividerRow}>
             <View style={styles.divider} />
@@ -119,11 +141,13 @@ export default function LoginScreen() {
             <View style={styles.divider} />
           </View>
 
+          {/* Google Sign-In with proper icon */}
           <Button
             title="Continue with Google"
             variant="outline"
             onPress={handleGoogleSignIn}
             isLoading={googleLoading}
+            icon={<Icon name="logo-google" size={20} color={theme.colors.primaryDark} />}
           />
 
           <View style={styles.footer}>
@@ -143,6 +167,24 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: theme.spacing.l,
     justifyContent: 'center',
+  },
+  brandRow: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.l,
+  },
+  brandBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.strong,
+  },
+  brandBadgeText: {
+    ...theme.typography.h2,
+    color: theme.colors.white,
+    fontWeight: '800',
   },
   heroCard: {
     backgroundColor: theme.colors.surfaceDark,
@@ -203,8 +245,18 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.l,
   },
+  forgotRow: {
+    alignSelf: 'flex-end',
+    marginBottom: theme.spacing.m,
+    marginTop: -theme.spacing.s,
+  },
+  forgotText: {
+    ...theme.typography.bodyS,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
   primaryButton: {
-    marginTop: theme.spacing.s,
+    marginTop: theme.spacing.xs,
   },
   dividerRow: {
     flexDirection: 'row',

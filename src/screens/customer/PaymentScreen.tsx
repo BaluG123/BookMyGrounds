@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Linking, AppState } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Linking, AppState, Animated } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import RazorpayCheckout from 'react-native-razorpay';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { theme } from '../../utils/theme';
 import { bookingsAPI } from '../../api/bookings';
@@ -10,10 +11,10 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 
 const PAYMENT_METHODS = [
-  { key: 'online', label: 'Online' },
-  { key: 'upi', label: 'UPI' },
-  { key: 'cash', label: 'Cash' },
-  { key: 'card', label: 'Card' },
+  { key: 'online', label: 'Online', icon: 'globe-outline' },
+  { key: 'upi', label: 'UPI', icon: 'phone-portrait-outline' },
+  { key: 'cash', label: 'Cash', icon: 'cash-outline' },
+  { key: 'card', label: 'Card', icon: 'card-outline' },
 ] as const;
 
 export default function PaymentScreen() {
@@ -27,12 +28,39 @@ export default function PaymentScreen() {
   const [openingUpi, setOpeningUpi] = useState(false);
   const [recording, setRecording] = useState(false);
   const [upiSession, setUpiSession] = useState<any>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<'online' | 'upi' | 'cash' | 'card'>('online');
   const [form, setForm] = useState({
     amount: '',
     transaction_id: '',
   });
   const appStateRef = useRef(AppState.currentState);
+
+  // Success animation refs
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
+
+  const showSuccessAnimation = useCallback(() => {
+    setPaymentSuccess(true);
+    Animated.parallel([
+      Animated.spring(successScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(successOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Auto-navigate after 3 seconds
+    setTimeout(() => {
+      navigation.replace('CustomerBookingDetail', { bookingId });
+    }, 3000);
+  }, [successScale, successOpacity, navigation, bookingId]);
 
   const fetchBooking = useCallback(async () => {
     try {
@@ -129,12 +157,7 @@ export default function PaymentScreen() {
       });
 
       await fetchBooking();
-      Alert.alert('Payment successful', 'Razorpay payment was verified successfully.', [
-        {
-          text: 'View booking',
-          onPress: () => navigation.replace('CustomerBookingDetail', { bookingId }),
-        },
-      ]);
+      showSuccessAnimation();
     } catch (error: any) {
       const fallback =
         error?.response?.data?.error ||
@@ -203,10 +226,7 @@ export default function PaymentScreen() {
         },
       });
       await fetchBooking();
-      Alert.alert(
-        'Payment recorded',
-        'This entry was saved as an already-confirmed payment. Use Razorpay checkout when the customer still needs to pay.',
-      );
+      showSuccessAnimation();
     } catch (error) {
       Alert.alert('Payment failed', getErrorMessage(error, 'Unable to record the payment.'));
     } finally {
@@ -222,87 +242,164 @@ export default function PaymentScreen() {
     );
   }
 
+  // Success State
+  if (paymentSuccess) {
+    return (
+      <ScreenContainer>
+        <View style={styles.successContainer}>
+          <Animated.View
+            style={[
+              styles.successCard,
+              { opacity: successOpacity, transform: [{ scale: successScale }] },
+            ]}
+          >
+            <View style={styles.successIconCircle}>
+              <Icon name="checkmark-circle" size={64} color={theme.colors.success} />
+            </View>
+            <Text style={styles.successTitle}>Payment Successful! 🎉</Text>
+            <Text style={styles.successSubtitle}>
+              Your payment for {booking.ground_name} has been verified and recorded.
+            </Text>
+            <View style={styles.successDetail}>
+              <Text style={styles.successDetailLabel}>Booking</Text>
+              <Text style={styles.successDetailValue}>#{booking.booking_number}</Text>
+            </View>
+            <View style={styles.successDetail}>
+              <Text style={styles.successDetailLabel}>Date & Time</Text>
+              <Text style={styles.successDetailValue}>
+                {booking.booking_date} • {booking.start_time?.slice(0, 5)} - {booking.end_time?.slice(0, 5)}
+              </Text>
+            </View>
+            <Text style={styles.successRedirect}>Redirecting to booking details...</Text>
+          </Animated.View>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   const outstandingAmount = Number(booking.outstanding_amount || 0);
 
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroCard}>
-          <Text style={styles.eyebrow}>PAYMENT DESK</Text>
-          <Text style={styles.title}>Settle this booking cleanly.</Text>
-          <Text style={styles.subtitle}>
-            Use Razorpay checkout for live payment. Direct UPI handoff and manual entry only help you record a payment after it is completed.
-          </Text>
+        {/* Header */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+            <Icon name="arrow-back" size={22} color={theme.colors.textMain} />
+          </TouchableOpacity>
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>Payment</Text>
+            <Text style={styles.headerSubtitle}>{booking.ground_name}</Text>
+          </View>
         </View>
 
+        {/* Booking Summary */}
         <View style={styles.summaryCard}>
-          <Text style={styles.sectionTitle}>{booking.ground_name || 'Booking'}</Text>
-          <Text style={styles.summaryLine}>
-            {booking.booking_date} • {booking.start_time?.slice(0, 5)} - {booking.end_time?.slice(0, 5)}
-          </Text>
-          <View style={styles.amountRow}>
-            <View style={styles.amountBlock}>
-              <Text style={styles.amountLabel}>Total amount</Text>
-              <Text style={styles.amountValue}>₹{booking.total_amount}</Text>
+          <View style={styles.summaryTop}>
+            <View>
+              <Text style={styles.summaryGround}>{booking.ground_name || 'Booking'}</Text>
+              <Text style={styles.summaryLine}>
+                {booking.booking_date} • {booking.start_time?.slice(0, 5)} - {booking.end_time?.slice(0, 5)}
+              </Text>
             </View>
-            <View style={styles.amountBlock}>
-              <Text style={styles.amountLabel}>Outstanding</Text>
-              <Text style={styles.amountValue}>₹{booking.outstanding_amount}</Text>
+            <View style={styles.bookingNumBadge}>
+              <Text style={styles.bookingNumText}>#{booking.booking_number}</Text>
             </View>
           </View>
-          <Text style={styles.statusText}>
-            Status: {booking.status_display || booking.status} • Payment: {booking.payment_status_display || booking.payment_status}
-          </Text>
+          <View style={styles.amountRow}>
+            <View style={styles.amountBlock}>
+              <Text style={styles.amountLabel}>Total</Text>
+              <Text style={styles.amountValue}>₹{booking.total_amount}</Text>
+            </View>
+            <View style={[styles.amountBlock, outstandingAmount > 0 && styles.amountBlockHighlight]}>
+              <Text style={styles.amountLabel}>Due</Text>
+              <Text style={[styles.amountValue, outstandingAmount > 0 && styles.amountValueDue]}>
+                ₹{booking.outstanding_amount}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.statusRow}>
+            <Icon name="information-circle-outline" size={16} color={theme.colors.textSoft} />
+            <Text style={styles.statusText}>
+              {booking.status_display || booking.status} • Payment: {booking.payment_status_display || booking.payment_status}
+            </Text>
+          </View>
         </View>
 
+        {/* Razorpay Checkout */}
         {outstandingAmount > 0 ? (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Razorpay checkout</Text>
-            <Text style={styles.sectionCopy}>This opens the real SDK checkout and verifies the result with your backend.</Text>
-            <Button title="Pay With Razorpay" onPress={handleRazorpayCheckout} isLoading={paying} />
+            <View style={styles.sectionHeaderRow}>
+              <Icon name="shield-checkmark-outline" size={22} color={theme.colors.primary} />
+              <Text style={styles.sectionTitle}>Secure Checkout</Text>
+            </View>
+            <Text style={styles.sectionCopy}>Pay securely with Razorpay. Supports UPI, cards, net banking, and wallets.</Text>
+            <Button
+              title={`Pay ₹${outstandingAmount} with Razorpay`}
+              onPress={handleRazorpayCheckout}
+              isLoading={paying}
+              icon={<Icon name="lock-closed-outline" size={16} color={theme.colors.white} />}
+            />
           </View>
         ) : null}
 
+        {/* UPI Direct */}
         {outstandingAmount > 0 ? (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Pay via UPI app</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Icon name="phone-portrait-outline" size={22} color={theme.colors.secondary} />
+              <Text style={styles.sectionTitle}>Pay via UPI App</Text>
+            </View>
             <Text style={styles.sectionCopy}>
-              This opens Google Pay, PhonePe, BHIM, or another installed UPI app using the owner&apos;s saved UPI ID and payee name. After the transfer succeeds, you still need to record the UPI reference below.
+              Opens Google Pay, PhonePe, or another UPI app. Record the reference ID after payment.
             </Text>
             {upiSession ? (
               <View style={styles.upiPreviewCard}>
-                <Text style={styles.upiPreviewLabel}>Payee name</Text>
-                <Text style={styles.upiPreviewValue}>{upiSession.payee_name}</Text>
-                {upiSession.bank_name ? (
-                  <>
-                    <Text style={styles.upiPreviewLabel}>Bank name</Text>
-                    <Text style={styles.upiPreviewValue}>{upiSession.bank_name}</Text>
-                  </>
-                ) : null}
-                <Text style={styles.upiPreviewLabel}>UPI ID</Text>
-                <Text style={styles.upiPreviewValue}>{upiSession.upi_id}</Text>
-                <Text style={styles.upiPreviewMeta}>Amount: ₹{upiSession.amount}</Text>
+                <View style={styles.upiRow}>
+                  <Text style={styles.upiPreviewLabel}>Payee</Text>
+                  <Text style={styles.upiPreviewValue}>{upiSession.payee_name}</Text>
+                </View>
+                <View style={styles.upiRow}>
+                  <Text style={styles.upiPreviewLabel}>UPI ID</Text>
+                  <Text style={styles.upiPreviewValue}>{upiSession.upi_id}</Text>
+                </View>
+                <View style={styles.upiRow}>
+                  <Text style={styles.upiPreviewLabel}>Amount</Text>
+                  <Text style={[styles.upiPreviewValue, { fontWeight: '800' }]}>₹{upiSession.amount}</Text>
+                </View>
               </View>
             ) : null}
-            <Button title="Open UPI App" onPress={handleUpiPayment} isLoading={openingUpi} variant="secondary" />
+            <Button
+              title="Open UPI App"
+              onPress={handleUpiPayment}
+              isLoading={openingUpi}
+              variant="secondary"
+              icon={<Icon name="open-outline" size={16} color={theme.colors.white} />}
+            />
           </View>
         ) : null}
 
+        {/* Manual Entry */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Manual payment entry</Text>
-          <Text style={styles.sectionCopy}>Use this only after you have already received the money offline or you have a confirmed UPI, card, or gateway reference ID.</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Icon name="create-outline" size={22} color={theme.colors.accent} />
+            <Text style={styles.sectionTitle}>Manual Entry</Text>
+          </View>
+          <Text style={styles.sectionCopy}>Record a payment after money has been received offline or via a confirmed reference.</Text>
 
           <Input
             label="Amount"
             value={form.amount}
             onChangeText={value => setForm(current => ({ ...current, amount: value }))}
             keyboardType="decimal-pad"
+            leftIcon={<Text style={{ fontSize: 16, color: theme.colors.textSoft }}>₹</Text>}
           />
           <Input
             label="Transaction ID"
             value={form.transaction_id}
             onChangeText={value => setForm(current => ({ ...current, transaction_id: value }))}
-            placeholder="Optional reference"
+            placeholder="UPI ref / Card auth / Gateway ID"
+            leftIcon={<Icon name="key-outline" size={16} color={theme.colors.textSoft} />}
           />
 
           <View style={styles.methodRow}>
@@ -314,27 +411,53 @@ export default function PaymentScreen() {
                   style={[styles.methodChip, active && styles.methodChipActive]}
                   onPress={() => setSelectedMethod(method.key)}
                   activeOpacity={0.88}>
+                  <Icon
+                    name={method.icon}
+                    size={16}
+                    color={active ? theme.colors.white : theme.colors.textMain}
+                  />
                   <Text style={[styles.methodText, active && styles.methodTextActive]}>{method.label}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          <Button title="Record Confirmed Payment" onPress={handleRecordPayment} isLoading={recording} />
+          <Button
+            title="Record Payment"
+            onPress={handleRecordPayment}
+            isLoading={recording}
+            icon={<Icon name="checkmark-done-outline" size={16} color={theme.colors.white} />}
+          />
         </View>
 
+        {/* Payment History */}
         {booking.payments?.length ? (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Payment history</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Icon name="receipt-outline" size={22} color={theme.colors.textMuted} />
+              <Text style={styles.sectionTitle}>Payment History</Text>
+            </View>
             {booking.payments.map((payment: any) => (
               <View key={payment.id} style={styles.paymentRow}>
-                <View>
-                  <Text style={styles.paymentTitle}>₹{payment.amount}</Text>
-                  <Text style={styles.paymentMeta}>
-                    {(payment.payment_method || '').toUpperCase()} • {(payment.status || '').toUpperCase()}
-                  </Text>
+                <View style={styles.paymentLeft}>
+                  <Icon
+                    name={
+                      payment.payment_method === 'upi' ? 'phone-portrait-outline' :
+                      payment.payment_method === 'card' ? 'card-outline' :
+                      payment.payment_method === 'cash' ? 'cash-outline' :
+                      'globe-outline'
+                    }
+                    size={18}
+                    color={payment.status === 'success' ? theme.colors.success : theme.colors.textSoft}
+                  />
+                  <View style={styles.paymentInfo}>
+                    <Text style={styles.paymentTitle}>₹{payment.amount}</Text>
+                    <Text style={styles.paymentMeta}>
+                      {(payment.payment_method || '').toUpperCase()} • {(payment.status || '').toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.paymentMeta}>
+                <Text style={styles.paymentDate}>
                   {payment.paid_at ? new Date(payment.paid_at).toLocaleDateString('en-IN') : 'Pending'}
                 </Text>
               </View>
@@ -355,56 +478,67 @@ const styles = StyleSheet.create({
     padding: theme.spacing.m,
     paddingBottom: 120,
   },
-  heroCard: {
+  // Header
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.s,
+    marginBottom: theme.spacing.l,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.m,
+    ...theme.shadows.soft,
+  },
+  headerCopy: {
+    flex: 1,
+  },
+  headerTitle: {
+    ...theme.typography.h2,
+    color: theme.colors.textMain,
+  },
+  headerSubtitle: {
+    ...theme.typography.bodyS,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+  },
+  // Summary
+  summaryCard: {
     backgroundColor: theme.colors.surfaceDark,
     borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.xl,
-    marginTop: theme.spacing.s,
+    padding: theme.spacing.l,
     marginBottom: theme.spacing.l,
     ...theme.shadows.strong,
   },
-  eyebrow: {
-    ...theme.typography.caption,
-    color: '#9CCAFF',
-    marginBottom: theme.spacing.s,
-  },
-  title: {
-    ...theme.typography.h1,
-    color: theme.colors.white,
-    marginBottom: theme.spacing.s,
-  },
-  subtitle: {
-    ...theme.typography.bodyM,
-    color: '#B3C7DC',
-  },
-  summaryCard: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.l,
+  summaryTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: theme.spacing.l,
-    ...theme.shadows.soft,
   },
-  sectionCard: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.l,
-    marginBottom: theme.spacing.l,
-    ...theme.shadows.soft,
-  },
-  sectionTitle: {
+  summaryGround: {
     ...theme.typography.h3,
-    color: theme.colors.textMain,
-    marginBottom: theme.spacing.s,
-  },
-  sectionCopy: {
-    ...theme.typography.bodyM,
-    color: theme.colors.textMuted,
-    marginBottom: theme.spacing.l,
+    color: theme.colors.white,
   },
   summaryLine: {
-    ...theme.typography.bodyM,
-    color: theme.colors.textMuted,
-    marginBottom: theme.spacing.l,
+    ...theme.typography.bodyS,
+    color: '#B3C7DC',
+    marginTop: 4,
+  },
+  bookingNumBadge: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.pill,
+  },
+  bookingNumText: {
+    ...theme.typography.caption,
+    color: '#9CCAFF',
   },
   amountRow: {
     flexDirection: 'row',
@@ -413,19 +547,60 @@ const styles = StyleSheet.create({
   },
   amountBlock: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: theme.borderRadius.l,
     padding: theme.spacing.m,
   },
+  amountBlockHighlight: {
+    backgroundColor: 'rgba(255,107,87,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,87,0.3)',
+  },
   amountLabel: {
     ...theme.typography.caption,
-    color: theme.colors.textSoft,
+    color: '#B3C7DC',
   },
   amountValue: {
     ...theme.typography.h2,
-    color: theme.colors.textMain,
-    marginTop: theme.spacing.s,
+    color: theme.colors.white,
+    marginTop: theme.spacing.xs,
   },
+  amountValueDue: {
+    color: theme.colors.coral || '#FF6B57',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusText: {
+    ...theme.typography.bodyS,
+    color: '#B3C7DC',
+  },
+  // Section Cards
+  sectionCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.l,
+    marginBottom: theme.spacing.l,
+    ...theme.shadows.soft,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    marginBottom: theme.spacing.s,
+  },
+  sectionTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.textMain,
+  },
+  sectionCopy: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.l,
+  },
+  // UPI
   upiPreviewCard: {
     backgroundColor: theme.colors.backgroundLight,
     borderRadius: theme.borderRadius.l,
@@ -434,39 +609,37 @@ const styles = StyleSheet.create({
     padding: theme.spacing.m,
     marginBottom: theme.spacing.l,
   },
+  upiRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
   upiPreviewLabel: {
-    ...theme.typography.caption,
+    ...theme.typography.bodyS,
     color: theme.colors.textSoft,
-    marginBottom: theme.spacing.xs,
   },
   upiPreviewValue: {
     ...theme.typography.bodyM,
     color: theme.colors.textMain,
-    marginBottom: theme.spacing.s,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  upiPreviewMeta: {
-    ...theme.typography.bodyS,
-    color: theme.colors.primaryDark,
-  },
-  statusText: {
-    ...theme.typography.bodyS,
-    color: theme.colors.textMuted,
-  },
+  // Payment Methods
   methodRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: theme.spacing.l,
+    gap: theme.spacing.s,
   },
   methodChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: theme.borderRadius.pill,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: 'rgba(255,255,255,0.92)',
-    marginRight: theme.spacing.s,
-    marginBottom: theme.spacing.s,
+    gap: 6,
   },
   methodChipActive: {
     backgroundColor: theme.colors.primary,
@@ -479,6 +652,7 @@ const styles = StyleSheet.create({
   methodTextActive: {
     color: theme.colors.white,
   },
+  // Payment History
   paymentRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -487,6 +661,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
+  paymentLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.m,
+  },
+  paymentInfo: {},
   paymentTitle: {
     ...theme.typography.bodyM,
     color: theme.colors.textMain,
@@ -495,5 +675,69 @@ const styles = StyleSheet.create({
   paymentMeta: {
     ...theme.typography.caption,
     color: theme.colors.textMuted,
+    marginTop: 2,
+  },
+  paymentDate: {
+    ...theme.typography.caption,
+    color: theme.colors.textSoft,
+  },
+  // Success State
+  successContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.l,
+  },
+  successCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    ...theme.shadows.strong,
+  },
+  successIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#D9FBF3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.l,
+  },
+  successTitle: {
+    ...theme.typography.h2,
+    color: theme.colors.textMain,
+    textAlign: 'center',
+    marginBottom: theme.spacing.s,
+  },
+  successSubtitle: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    marginBottom: theme.spacing.l,
+  },
+  successDetail: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingVertical: theme.spacing.s,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  successDetailLabel: {
+    ...theme.typography.bodyS,
+    color: theme.colors.textSoft,
+  },
+  successDetailValue: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMain,
+    fontWeight: '600',
+  },
+  successRedirect: {
+    ...theme.typography.caption,
+    color: theme.colors.textSoft,
+    marginTop: theme.spacing.l,
   },
 });

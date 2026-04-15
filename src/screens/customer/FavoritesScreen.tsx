@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { theme } from '../../utils/theme';
 import { GroundCard } from '../../components/GroundCard';
@@ -14,6 +15,14 @@ export default function FavoritesScreen() {
   useEffect(() => {
     fetchFavorites();
   }, []);
+
+  // Auto-refresh on screen focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchFavorites();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const fetchFavorites = async () => {
     try {
@@ -35,8 +44,17 @@ export default function FavoritesScreen() {
         contentContainerStyle={styles.listContainer}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>FAVORITES</Text>
-            <Text style={styles.title}>Your saved shortlist.</Text>
+            <View style={styles.headerTop}>
+              <View>
+                <Text style={styles.eyebrow}>FAVORITES</Text>
+                <Text style={styles.title}>Your saved shortlist.</Text>
+              </View>
+              {favorites.length > 0 && (
+                <View style={styles.countBadge}>
+                  <Text style={styles.countText}>{favorites.length}</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.subtitle}>Keep the venues you love ready for the next booking.</Text>
           </View>
         }
@@ -51,8 +69,11 @@ export default function FavoritesScreen() {
             <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
           ) : (
             <View style={styles.emptyState}>
+              <Icon name="heart-outline" size={36} color={theme.colors.primary} />
               <Text style={styles.emptyTitle}>No saved turfs</Text>
-              <Text style={styles.emptyText}>Favorite venues will show up here once you start saving them.</Text>
+              <Text style={styles.emptyText}>
+                Tap the ♥ heart icon on any venue to save it here for quick access.
+              </Text>
             </View>
           )
         }
@@ -72,6 +93,25 @@ const styles = StyleSheet.create({
   header: {
     marginTop: theme.spacing.s,
     marginBottom: theme.spacing.l,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  countBadge: {
+    backgroundColor: theme.colors.primary,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.soft,
+  },
+  countText: {
+    ...theme.typography.bodyM,
+    color: theme.colors.white,
+    fontWeight: '700',
   },
   eyebrow: {
     ...theme.typography.caption,
@@ -100,6 +140,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     ...theme.typography.h3,
     color: theme.colors.textMain,
+    marginTop: theme.spacing.m,
     marginBottom: theme.spacing.s,
   },
   emptyText: {

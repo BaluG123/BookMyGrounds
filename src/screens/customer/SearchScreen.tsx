@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Text } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Input } from '../../components/Input';
@@ -7,62 +7,159 @@ import { theme } from '../../utils/theme';
 import { GroundCard } from '../../components/GroundCard';
 import { groundsAPI } from '../../api/grounds';
 
+const SPORT_FILTERS = [
+  { key: 'all', label: 'All', icon: '🏟️' },
+  { key: 'cricket', label: 'Cricket', icon: '🏏' },
+  { key: 'football', label: 'Football', icon: '⚽' },
+  { key: 'badminton', label: 'Badminton', icon: '🏸' },
+  { key: 'tennis', label: 'Tennis', icon: '🎾' },
+  { key: 'basketball', label: 'Basketball', icon: '🏀' },
+];
+
 export default function SearchScreen({ navigation }: any) {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<any[]>([]);
+  const [popularGrounds, setPopularGrounds] = useState<any[]>([]);
+  const [activeSport, setActiveSport] = useState('all');
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSearch = async () => {
-    if (!search.trim()) {
+  // Load popular grounds on mount
+  useEffect(() => {
+    fetchPopular();
+  }, []);
+
+  const fetchPopular = async () => {
+    try {
+      const res = await groundsAPI.list({ ordering: '-avg_rating', page_size: 5 });
+      setPopularGrounds(res.data.results || res.data || []);
+    } catch (e) {
+      console.log('Error fetching popular grounds', e);
+    }
+  };
+
+  const executeSearch = useCallback(async (query: string, sportType: string) => {
+    if (!query.trim() && sportType === 'all') {
       setResults([]);
+      setHasSearched(false);
       return;
     }
 
     try {
-      const res = await groundsAPI.list({ search });
-      setResults(res.data.results || res.data);
+      setLoading(true);
+      setHasSearched(true);
+      const params: any = {};
+      if (query.trim()) params.search = query.trim();
+      if (sportType !== 'all') params.ground_type = sportType;
+
+      const res = await groundsAPI.list(params);
+      setResults(res.data.results || res.data || []);
     } catch (e) {
       console.log('Search error', e);
+    } finally {
+      setLoading(false);
     }
+  }, []);
+
+  // Debounced search as user types
+  const handleSearchChange = (text: string) => {
+    setSearch(text);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      executeSearch(text, activeSport);
+    }, 500);
   };
+
+  const handleSportFilter = (key: string) => {
+    setActiveSport(key);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    executeSearch(search, key);
+  };
+
+  const displayResults = hasSearched ? results : popularGrounds;
+  const showingPopular = !hasSearched;
 
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.heroCard}>
           <Text style={styles.eyebrow}>DISCOVER</Text>
-          <Text style={styles.title}>Search by venue, city, or vibe.</Text>
-          <Text style={styles.subtitle}>Pinpoint the perfect turf without digging through clutter.</Text>
+          <Text style={styles.title}>Search by venue, city, or sport.</Text>
+          <Text style={styles.subtitle}>Find the perfect turf without digging through clutter.</Text>
         </View>
 
+        {/* Search Bar */}
         <View style={styles.searchCard}>
           <Input
             placeholder="Search turfs, cities..."
             value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={handleSearch}
+            onChangeText={handleSearchChange}
+            onSubmitEditing={() => executeSearch(search, activeSport)}
             returnKeyType="search"
             leftIcon={<Icon name="search-outline" size={20} color={theme.colors.textSoft} />}
           />
-          <Text style={styles.hint}>Press search on the keyboard to fetch results.</Text>
+
+          {/* Sport Filters */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sportFilterRow}
+          >
+            {SPORT_FILTERS.map(sport => {
+              const active = activeSport === sport.key;
+              return (
+                <TouchableOpacity
+                  key={sport.key}
+                  style={[styles.sportChip, active && styles.sportChipActive]}
+                  onPress={() => handleSportFilter(sport.key)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.sportChipIcon}>{sport.icon}</Text>
+                  <Text style={[styles.sportChipText, active && styles.sportChipTextActive]}>
+                    {sport.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
+        {/* Section Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{results.length > 0 ? 'Search results' : 'Start exploring'}</Text>
+          <Text style={styles.sectionTitle}>
+            {showingPopular ? '🔥 Popular venues' : `${results.length} result${results.length !== 1 ? 's' : ''} found`}
+          </Text>
           <Text style={styles.sectionCopy}>
-            {results.length > 0
-              ? `${results.length} venues matched your search.`
-              : 'Try a turf name, neighborhood, or city to begin.'}
+            {showingPopular
+              ? 'Top-rated grounds to get you started.'
+              : search.trim()
+                ? `Matching "${search.trim()}"${activeSport !== 'all' ? ` in ${activeSport}` : ''}`
+                : `Showing ${activeSport} venues`}
           </Text>
         </View>
 
-        {results.length === 0 ? (
+        {loading ? (
+          <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
+        ) : displayResults.length === 0 ? (
           <View style={styles.emptyState}>
-            <Icon name="compass-outline" size={28} color={theme.colors.primary} />
-            <Text style={styles.emptyTitle}>Search for a standout venue</Text>
-            <Text style={styles.emptyText}>Results will appear here with the refreshed card layout.</Text>
+            <Icon name="compass-outline" size={32} color={theme.colors.primary} />
+            <Text style={styles.emptyTitle}>
+              {hasSearched ? 'No venues found' : 'Search for a standout venue'}
+            </Text>
+            <Text style={styles.emptyText}>
+              {hasSearched
+                ? 'Try different keywords or remove filters.'
+                : 'Results will appear here with the refreshed card layout.'}
+            </Text>
           </View>
         ) : (
-          results.map(ground => (
+          displayResults.map(ground => (
             <GroundCard
               key={ground.id}
               ground={ground}
@@ -105,9 +202,34 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.l,
     ...theme.shadows.soft,
   },
-  hint: {
+  sportFilterRow: {
+    marginTop: theme.spacing.m,
+  },
+  sportChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: theme.borderRadius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    marginRight: theme.spacing.s,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  sportChipActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  sportChipIcon: {
+    fontSize: 14,
+    marginRight: 5,
+  },
+  sportChipText: {
     ...theme.typography.caption,
-    color: theme.colors.textSoft,
+    color: theme.colors.textMain,
+  },
+  sportChipTextActive: {
+    color: theme.colors.white,
   },
   sectionHeader: {
     marginBottom: theme.spacing.m,
@@ -120,6 +242,9 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyM,
     color: theme.colors.textMuted,
     marginTop: 4,
+  },
+  loader: {
+    marginTop: theme.spacing.xl,
   },
   emptyState: {
     alignItems: 'center',

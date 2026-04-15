@@ -23,6 +23,23 @@ const palette = {
   danger: '#FF6B6B',
 };
 
+export const sportColors = {
+  cricket: { bg: '#E8F5E9', text: '#2E7D32', icon: '🏏' },
+  football: { bg: '#E3F2FD', text: '#1565C0', icon: '⚽' },
+  badminton: { bg: '#FFF3E0', text: '#E65100', icon: '🏸' },
+  tennis: { bg: '#F3E5F5', text: '#7B1FA2', icon: '🎾' },
+  basketball: { bg: '#FBE9E7', text: '#BF360C', icon: '🏀' },
+  hockey: { bg: '#E0F7FA', text: '#00695C', icon: '🏑' },
+  multi_sport: { bg: '#EDE7F6', text: '#4527A0', icon: '🏟️' },
+};
+
+export const animTiming = {
+  fast: 200,
+  normal: 300,
+  slow: 500,
+  spring: { damping: 15, stiffness: 150 },
+};
+
 export const theme = {
   colors: {
     primary: palette.cobalt,
@@ -48,8 +65,10 @@ export const theme = {
     warning: palette.warning,
     white: palette.white,
     black: '#000000',
+    coral: palette.coral,
     overlay: 'rgba(7, 17, 31, 0.6)',
     tabBar: 'rgba(255,255,255,0.94)',
+    verified: '#00B894',
   },
   spacing: {
     xs: 4,
@@ -133,6 +152,13 @@ export const theme = {
     },
   },
 };
+
+export function getGreeting(): { text: string; emoji: string } {
+  const hour = new Date().getHours();
+  if (hour < 12) return { text: 'Good Morning', emoji: '🌅' };
+  if (hour < 17) return { text: 'Good Afternoon', emoji: '☀️' };
+  return { text: 'Good Evening', emoji: '🌙' };
+}
 
 export const navigationTheme: Theme = {
   dark: false,

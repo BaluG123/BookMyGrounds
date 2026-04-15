@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector, RootState } from '../store';
@@ -21,6 +21,69 @@ import { navigationRef } from './navigationService';
 import { navigationTheme, theme } from '../utils/theme';
 
 const RootStack = createNativeStackNavigator();
+
+function SplashScreen() {
+  const scaleAnim = useRef(new Animated.Value(0.3)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Logo scale & fade in
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 5,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Pulsing activity indicator
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.4,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, []);
+
+  return (
+    <View style={styles.loadingScreen}>
+      <Animated.View
+        style={[
+          styles.loadingCard,
+          { opacity: opacityAnim, transform: [{ scale: scaleAnim }] },
+        ]}
+      >
+        <View style={styles.loadingBadge}>
+          <Text style={styles.loadingBadgeText}>BG</Text>
+        </View>
+        <Text style={styles.loadingEyebrow}>BOOKMYGROUNDS</Text>
+        <Text style={styles.loadingTitle}>Setting up your arena</Text>
+        <Text style={styles.loadingSubtitle}>
+          Restoring your last session and preparing the new interface.
+        </Text>
+        <Animated.View style={{ opacity: pulseAnim, marginTop: theme.spacing.xl }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </Animated.View>
+        <Text style={styles.versionText}>v1.0.0</Text>
+      </Animated.View>
+    </View>
+  );
+}
 
 export default function RootNavigator() {
   const dispatch = useAppDispatch();
@@ -68,19 +131,7 @@ export default function RootNavigator() {
   }, [token, user?.id]);
 
   if (isLoading) {
-    return (
-      <View style={styles.loadingScreen}>
-        <View style={styles.loadingCard}>
-          <View style={styles.loadingBadge}>
-            <Text style={styles.loadingBadgeText}>BG</Text>
-          </View>
-          <Text style={styles.loadingEyebrow}>BOOKMYGROUNDS</Text>
-          <Text style={styles.loadingTitle}>Setting up your arena</Text>
-          <Text style={styles.loadingSubtitle}>Restoring your last session and preparing the new interface.</Text>
-          <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loadingIndicator} />
-        </View>
-      </View>
-    );
+    return <SplashScreen />;
   }
 
   return (
@@ -121,6 +172,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceDark,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.xl,
+    alignItems: 'center',
     ...theme.shadows.strong,
   },
   loadingBadge: {
@@ -144,13 +196,17 @@ const styles = StyleSheet.create({
   loadingTitle: {
     ...theme.typography.h1,
     color: theme.colors.white,
+    textAlign: 'center',
     marginBottom: theme.spacing.s,
   },
   loadingSubtitle: {
     ...theme.typography.bodyM,
     color: '#B3C7DC',
+    textAlign: 'center',
   },
-  loadingIndicator: {
-    marginTop: theme.spacing.xl,
+  versionText: {
+    ...theme.typography.caption,
+    color: 'rgba(255,255,255,0.3)',
+    marginTop: theme.spacing.l,
   },
 });

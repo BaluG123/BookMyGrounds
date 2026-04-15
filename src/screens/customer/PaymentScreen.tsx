@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Linking, AppState, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, AppState, Animated } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import RazorpayCheckout from 'react-native-razorpay';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { theme } from '../../utils/theme';
@@ -12,7 +13,6 @@ import { Input } from '../../components/Input';
 
 const PAYMENT_METHODS = [
   { key: 'online', label: 'Online', icon: 'globe-outline' },
-  { key: 'upi', label: 'UPI', icon: 'phone-portrait-outline' },
   { key: 'cash', label: 'Cash', icon: 'cash-outline' },
   { key: 'card', label: 'Card', icon: 'card-outline' },
 ] as const;
@@ -25,15 +25,15 @@ export default function PaymentScreen() {
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
-  const [openingUpi, setOpeningUpi] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [upiSession, setUpiSession] = useState<any>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<'online' | 'upi' | 'cash' | 'card'>('online');
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<'online' | 'cash' | 'card'>('online');
   const [form, setForm] = useState({
     amount: '',
     transaction_id: '',
   });
+  const [isTestMode, setIsTestMode] = useState(false);
   const appStateRef = useRef(AppState.currentState);
 
   // Success animation refs
@@ -86,6 +86,20 @@ export default function PaymentScreen() {
       return;
     }
     fetchBooking();
+
+    // Fetch user role to determine if manual entry should be shown
+    const getRole = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user_data');
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          setUserRole(parsed.role);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch user role');
+      }
+    };
+    getRole();
   }, [bookingId, fetchBooking, navigation]);
 
   useEffect(() => {
@@ -96,22 +110,6 @@ export default function PaymentScreen() {
     });
     return unsubscribe;
   }, [navigation, bookingId, fetchBooking]);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextState => {
-      const previousState = appStateRef.current;
-      appStateRef.current = nextState;
-
-      if ((previousState === 'background' || previousState === 'inactive') && nextState === 'active' && upiSession) {
-        Alert.alert(
-          'Back from UPI app',
-          `If you completed the payment to ${upiSession.payee_name}, enter the UPI reference number below and tap "Record Confirmed Payment".`,
-        );
-      }
-    });
-
-    return () => subscription.remove();
-  }, [upiSession]);
 
   const handleRazorpayCheckout = async () => {
     const payableAmount = Number(form.amount || booking?.outstanding_amount || 0);
@@ -127,13 +125,16 @@ export default function PaymentScreen() {
       });
 
       const orderPayload = orderRes.data;
+      const keyId = orderPayload.key_id || '';
+      setIsTestMode(keyId.startsWith('rzp_test_'));
+
       const options = {
-        key: orderPayload.key_id,
+        key: keyId,
         amount: orderPayload.order?.amount,
         currency: orderPayload.order?.currency || 'INR',
         order_id: orderPayload.order?.id,
-        name: orderPayload.booking?.ground_name || 'BookMyGrounds',
-        description: `Booking ${orderPayload.booking?.booking_number || ''}`.trim(),
+        name: 'BookMyGrounds',
+        description: `${booking?.ground_name || 'Turf'} - Booking #${booking?.booking_number || ''}`.trim(),
         prefill: {
           name: orderPayload.booking?.customer_name || booking?.customer_name || booking?.customer_info?.full_name || '',
           contact: orderPayload.booking?.customer_phone || booking?.customer_phone || '',
@@ -144,7 +145,9 @@ export default function PaymentScreen() {
         },
       };
 
+      console.log('Opening Razorpay with options:', { ...options, key: '***' });
       const paymentResult = await RazorpayCheckout.open(options);
+      console.log('Razorpay Result:', paymentResult);
 
       await bookingsAPI.verifyPayment(bookingId, {
         razorpay_order_id: paymentResult.razorpay_order_id,
@@ -171,38 +174,6 @@ export default function PaymentScreen() {
     }
   };
 
-  const handleUpiPayment = async () => {
-    const payableAmount = Number(form.amount || booking?.outstanding_amount || 0);
-    if (!payableAmount || payableAmount <= 0) {
-      Alert.alert('Amount required', 'Enter a valid payment amount before opening the UPI app.');
-      return;
-    }
-
-    try {
-      setOpeningUpi(true);
-      const response = await bookingsAPI.createUpiIntent(bookingId, {
-        amount: payableAmount,
-      });
-
-      const payload = response.data;
-      if (!payload?.upi_uri) {
-        throw new Error('UPI payment link was not returned by the server.');
-      }
-
-      setUpiSession(payload);
-      await Linking.openURL(payload.upi_uri);
-      setSelectedMethod('upi');
-      Alert.alert(
-        'UPI app opened',
-        `Pay ${payload.amount} to ${payload.payee_name}. After the payment succeeds, return here and enter the UPI reference number to record it.`,
-      );
-    } catch (error: any) {
-      Alert.alert('Unable to open UPI app', getErrorMessage(error, 'No supported UPI app was available on this device.'));
-    } finally {
-      setOpeningUpi(false);
-    }
-  };
-
   const handleRecordPayment = async () => {
     if (!form.amount) {
       Alert.alert('Amount required', 'Enter the payment amount before continuing.');
@@ -210,7 +181,7 @@ export default function PaymentScreen() {
     }
 
     if (selectedMethod !== 'cash' && !form.transaction_id.trim()) {
-      Alert.alert('Reference required', 'Enter the UPI, card, or gateway transaction ID before recording this payment.');
+      Alert.alert('Reference required', 'Enter the reference or transaction ID before recording this payment.');
       return;
     }
 
@@ -256,9 +227,13 @@ export default function PaymentScreen() {
             <View style={styles.successIconCircle}>
               <Icon name="checkmark-circle" size={64} color={theme.colors.success} />
             </View>
-            <Text style={styles.successTitle}>Payment Successful! 🎉</Text>
+            <Text style={styles.successTitle}>
+              {isTestMode ? 'Test Payment Verified! 🧪' : 'Payment Successful! 🎉'}
+            </Text>
             <Text style={styles.successSubtitle}>
-              Your payment for {booking.ground_name} has been verified and recorded.
+              {isTestMode 
+                ? 'Your simulated payment was verified by the sandbox server.'
+                : `Your payment for ${booking.ground_name} has been verified and recorded.`}
             </Text>
             <View style={styles.successDetail}>
               <Text style={styles.successDetailLabel}>Booking</Text>
@@ -281,6 +256,12 @@ export default function PaymentScreen() {
 
   return (
     <ScreenContainer>
+      {isTestMode && (
+        <View style={styles.sandboxBanner}>
+          <Icon name="flask-outline" size={16} color={theme.colors.white} />
+          <Text style={styles.sandboxText}>DEBUG: RAZORPAY SANDBOX ACTIVE (NO REAL MONEY)</Text>
+        </View>
+      )}
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.headerRow}>
@@ -343,92 +324,60 @@ export default function PaymentScreen() {
           </View>
         ) : null}
 
-        {/* UPI Direct */}
-        {outstandingAmount > 0 ? (
+
+
+        {/* Manual Entry - Only visible to Admins/Owners */}
+        {userRole === 'admin' && (
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeaderRow}>
-              <Icon name="phone-portrait-outline" size={22} color={theme.colors.secondary} />
-              <Text style={styles.sectionTitle}>Pay via UPI App</Text>
+              <Icon name="create-outline" size={22} color={theme.colors.accent} />
+              <Text style={styles.sectionTitle}>Manual Entry</Text>
             </View>
-            <Text style={styles.sectionCopy}>
-              Opens Google Pay, PhonePe, or another UPI app. Record the reference ID after payment.
-            </Text>
-            {upiSession ? (
-              <View style={styles.upiPreviewCard}>
-                <View style={styles.upiRow}>
-                  <Text style={styles.upiPreviewLabel}>Payee</Text>
-                  <Text style={styles.upiPreviewValue}>{upiSession.payee_name}</Text>
-                </View>
-                <View style={styles.upiRow}>
-                  <Text style={styles.upiPreviewLabel}>UPI ID</Text>
-                  <Text style={styles.upiPreviewValue}>{upiSession.upi_id}</Text>
-                </View>
-                <View style={styles.upiRow}>
-                  <Text style={styles.upiPreviewLabel}>Amount</Text>
-                  <Text style={[styles.upiPreviewValue, { fontWeight: '800' }]}>₹{upiSession.amount}</Text>
-                </View>
-              </View>
-            ) : null}
+            <Text style={styles.sectionCopy}>Record a payment after money has been received offline or via a confirmed reference.</Text>
+
+            <Input
+              label="Amount"
+              value={form.amount}
+              onChangeText={value => setForm(current => ({ ...current, amount: value }))}
+              keyboardType="decimal-pad"
+              leftIcon={<Text style={{ fontSize: 16, color: theme.colors.textSoft }}>₹</Text>}
+            />
+            <Input
+              label="Transaction ID"
+              value={form.transaction_id}
+              onChangeText={value => setForm(current => ({ ...current, transaction_id: value }))}
+              placeholder="UPI ref / Card auth / Gateway ID"
+              leftIcon={<Icon name="key-outline" size={16} color={theme.colors.textSoft} />}
+            />
+
+            <View style={styles.methodRow}>
+              {PAYMENT_METHODS.map(method => {
+                const active = selectedMethod === method.key;
+                return (
+                  <TouchableOpacity
+                    key={method.key}
+                    style={[styles.methodChip, active && styles.methodChipActive]}
+                    onPress={() => setSelectedMethod(method.key)}
+                    activeOpacity={0.88}>
+                    <Icon
+                      name={method.icon}
+                      size={16}
+                      color={active ? theme.colors.white : theme.colors.textMain}
+                    />
+                    <Text style={[styles.methodText, active && styles.methodTextActive]}>{method.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <Button
-              title="Open UPI App"
-              onPress={handleUpiPayment}
-              isLoading={openingUpi}
-              variant="secondary"
-              icon={<Icon name="open-outline" size={16} color={theme.colors.white} />}
+              title="Record Payment"
+              onPress={handleRecordPayment}
+              isLoading={recording}
+              icon={<Icon name="checkmark-done-outline" size={16} color={theme.colors.white} />}
             />
           </View>
-        ) : null}
-
-        {/* Manual Entry */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderRow}>
-            <Icon name="create-outline" size={22} color={theme.colors.accent} />
-            <Text style={styles.sectionTitle}>Manual Entry</Text>
-          </View>
-          <Text style={styles.sectionCopy}>Record a payment after money has been received offline or via a confirmed reference.</Text>
-
-          <Input
-            label="Amount"
-            value={form.amount}
-            onChangeText={value => setForm(current => ({ ...current, amount: value }))}
-            keyboardType="decimal-pad"
-            leftIcon={<Text style={{ fontSize: 16, color: theme.colors.textSoft }}>₹</Text>}
-          />
-          <Input
-            label="Transaction ID"
-            value={form.transaction_id}
-            onChangeText={value => setForm(current => ({ ...current, transaction_id: value }))}
-            placeholder="UPI ref / Card auth / Gateway ID"
-            leftIcon={<Icon name="key-outline" size={16} color={theme.colors.textSoft} />}
-          />
-
-          <View style={styles.methodRow}>
-            {PAYMENT_METHODS.map(method => {
-              const active = selectedMethod === method.key;
-              return (
-                <TouchableOpacity
-                  key={method.key}
-                  style={[styles.methodChip, active && styles.methodChipActive]}
-                  onPress={() => setSelectedMethod(method.key)}
-                  activeOpacity={0.88}>
-                  <Icon
-                    name={method.icon}
-                    size={16}
-                    color={active ? theme.colors.white : theme.colors.textMain}
-                  />
-                  <Text style={[styles.methodText, active && styles.methodTextActive]}>{method.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Button
-            title="Record Payment"
-            onPress={handleRecordPayment}
-            isLoading={recording}
-            icon={<Icon name="checkmark-done-outline" size={16} color={theme.colors.white} />}
-          />
-        </View>
+        )}
 
         {/* Payment History */}
         {booking.payments?.length ? (
@@ -442,7 +391,6 @@ export default function PaymentScreen() {
                 <View style={styles.paymentLeft}>
                   <Icon
                     name={
-                      payment.payment_method === 'upi' ? 'phone-portrait-outline' :
                       payment.payment_method === 'card' ? 'card-outline' :
                       payment.payment_method === 'cash' ? 'cash-outline' :
                       'globe-outline'
@@ -576,6 +524,21 @@ const styles = StyleSheet.create({
   statusText: {
     ...theme.typography.bodyS,
     color: '#B3C7DC',
+  },
+  // Sandbox
+  sandboxBanner: {
+    backgroundColor: '#FF4757',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 8,
+  },
+  sandboxText: {
+    ...theme.typography.caption,
+    color: theme.colors.white,
+    fontWeight: '800',
+    fontSize: 10,
   },
   // Section Cards
   sectionCard: {

@@ -140,6 +140,18 @@ export default function SelectSlotScreen() {
         return;
       }
 
+      // 100 INR Minimum Check
+      const isWeekend = new Date(selectedDate).getDay() >= 5; 
+      const estimatedPrice = isWeekend ? (matchedPricingPlan.weekend_price || matchedPricingPlan.price) : matchedPricingPlan.price;
+      
+      if (Number(estimatedPrice || 0) < 100) {
+        Alert.alert(
+          'Minimum Amount Required',
+          'The selected slot does not meet the minimum booking amount of ₹100. Please contact the ground owner or select a longer duration.'
+        );
+        return;
+      }
+
       const response = await bookingsAPI.create({
         ground: ground.id,
         time_slot: selectedSlotData.id,
@@ -155,23 +167,9 @@ export default function SelectSlotScreen() {
       });
 
       const booking = response.data;
-
-      Alert.alert(
-        'Booking created',
-        `Your slot on ${booking.booking_date} from ${formatTimeLabel(booking.start_time)} to ${formatTimeLabel(
-          booking.end_time,
-        )} has been reserved.`,
-        [
-          {
-            text: 'Pay now',
-            onPress: () => navigation.navigate('Payment', { bookingId: booking.id }),
-          },
-          {
-            text: 'Later',
-            onPress: () => navigation.navigate('MainTabs', { screen: 'Bookings' }),
-          },
-        ],
-      );
+      
+      // Mandatory immediate navigation to payment
+      navigation.replace('Payment', { bookingId: booking.id });
     } catch (error) {
       Alert.alert('Booking failed', getErrorMessage(error, 'Unable to reserve this slot right now.'));
     } finally {

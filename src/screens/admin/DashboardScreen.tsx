@@ -13,12 +13,19 @@ import { NotificationBell } from '../../components/NotificationBell';
 export default function DashboardScreen() {
   const navigation = useNavigation<any>();
   const [stats, setStats] = useState({
-    revenue: 0,
+    grossRevenue: 0,
+    netRevenue: 0,
     bookingsCompleted: 0,
+    convertedBookings: 0,
+    cancelledBookings: 0,
     pendingRequests: 0,
     totalGrounds: 0,
     averageRating: 0,
     totalReviews: 0,
+    averageOrderValue: 0,
+    conversionRate: 0,
+    paymentCaptureRate: 0,
+    discountedBookings: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
 
@@ -39,7 +46,19 @@ export default function DashboardScreen() {
 
       const completedBookings = bookings.filter((booking: any) => booking.status === 'completed' || booking.status === 'confirmed');
       const pendingBookings = bookings.filter((booking: any) => booking.status === 'pending');
-      const revenue = completedBookings.reduce((sum: number, booking: any) => {
+      const cancelledBookings = bookings.filter((booking: any) => booking.status === 'cancelled');
+      const grossRevenue = completedBookings.reduce((sum: number, booking: any) => {
+        const amount = Number(
+          booking.base_amount ||
+            booking.total_amount ||
+            booking.amount ||
+            booking.slot_price ||
+            booking.pricing_plan?.price ||
+            0,
+        );
+        return sum + (Number.isFinite(amount) ? amount : 0);
+      }, 0);
+      const netRevenue = completedBookings.reduce((sum: number, booking: any) => {
         const amount = Number(
           booking.total_amount ||
             booking.amount ||
@@ -53,14 +72,26 @@ export default function DashboardScreen() {
         .map((ground: any) => Number(ground.avg_rating || 0))
         .filter((rating: number) => Number.isFinite(rating) && rating > 0);
       const totalReviews = grounds.reduce((sum: number, ground: any) => sum + Number(ground.total_reviews || 0), 0);
+      const discountedBookings = bookings.filter((booking: any) => Number(booking.discount_amount || 0) > 0).length;
+      const convertedBookings = completedBookings.length;
+      const conversionBase = convertedBookings + pendingBookings.length + cancelledBookings.length;
+      const paidBookings = completedBookings.filter((booking: any) => booking.payment_status === 'paid').length;
+      const averageOrderValue = convertedBookings ? Number((netRevenue / convertedBookings).toFixed(0)) : 0;
 
       setStats({
-        revenue,
+        grossRevenue,
+        netRevenue,
         bookingsCompleted: completedBookings.length,
+        convertedBookings,
+        cancelledBookings: cancelledBookings.length,
         pendingRequests: pendingBookings.length,
         totalGrounds: grounds.length,
         averageRating: ratings.length ? Number((ratings.reduce((sum: number, rating: number) => sum + rating, 0) / ratings.length).toFixed(1)) : 0,
         totalReviews,
+        averageOrderValue,
+        conversionRate: conversionBase ? Number(((convertedBookings / conversionBase) * 100).toFixed(0)) : 0,
+        paymentCaptureRate: convertedBookings ? Number(((paidBookings / convertedBookings) * 100).toFixed(0)) : 0,
+        discountedBookings,
       });
     } catch (error) {
       Alert.alert('Dashboard unavailable', getErrorMessage(error, 'Unable to load live dashboard data.'));
@@ -91,13 +122,14 @@ export default function DashboardScreen() {
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.primaryCard]}>
             <Icon name="cash-outline" size={24} color={theme.colors.white} />
-            <Text style={styles.primaryValue}>₹{stats.revenue}</Text>
-            <Text style={styles.primaryLabel}>Estimated revenue</Text>
+            <Text style={styles.primaryValue}>₹{stats.netRevenue}</Text>
+            <Text style={styles.primaryLabel}>Net converted revenue</Text>
+            <Text style={styles.primaryMeta}>Gross ₹{stats.grossRevenue}</Text>
           </View>
           <View style={styles.statCard}>
             <Icon name="calendar-outline" size={22} color={theme.colors.primary} />
-            <Text style={styles.statValue}>{stats.bookingsCompleted}</Text>
-            <Text style={styles.statLabel}>Completed bookings</Text>
+            <Text style={styles.statValue}>{stats.convertedBookings}</Text>
+            <Text style={styles.statLabel}>Confirmed/completed</Text>
           </View>
           <View style={styles.statCard}>
             <Icon name="hourglass-outline" size={22} color={theme.colors.accent} />
@@ -105,9 +137,9 @@ export default function DashboardScreen() {
             <Text style={styles.statLabel}>Pending requests</Text>
           </View>
           <View style={styles.statCard}>
-            <Icon name="football-outline" size={22} color={theme.colors.primary} />
-            <Text style={styles.statValue}>{stats.totalGrounds}</Text>
-            <Text style={styles.statLabel}>Active venues</Text>
+            <Icon name="swap-horizontal-outline" size={22} color={theme.colors.primary} />
+            <Text style={styles.statValue}>{stats.conversionRate}%</Text>
+            <Text style={styles.statLabel}>Request conversion</Text>
           </View>
           <View style={styles.statCard}>
             <Icon name="star-outline" size={22} color={theme.colors.accent} />
@@ -117,11 +149,11 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.insightCard}>
-          <Text style={styles.insightTitle}>Today's focus</Text>
+          <Text style={styles.insightTitle}>Revenue and conversion panel</Text>
           <Text style={styles.insightText}>
             {stats.pendingRequests > 0
-              ? `You have ${stats.pendingRequests} pending request${stats.pendingRequests > 1 ? 's' : ''}. Respond quickly to improve conversion.`
-              : 'No pending requests right now. Focus on promoting your highest-rated slots and keeping availability current.'}
+              ? `You have ${stats.pendingRequests} pending request${stats.pendingRequests > 1 ? 's' : ''}. Clearing them is the fastest path to lifting your ${stats.conversionRate}% conversion rate.`
+              : 'No pending requests right now. Focus on filling quieter windows and keeping offer-led inventory active.'}
           </Text>
           <View style={styles.actionRow}>
             <Button title="Notifications" variant="outline" onPress={() => navigation.navigate('Notifications')} style={styles.actionBtn} />
@@ -130,12 +162,43 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.insightRow}>
           <View style={styles.microInsight}>
+            <Text style={styles.microLabel}>Average order value</Text>
+            <Text style={styles.microValue}>₹{stats.averageOrderValue}</Text>
+          </View>
+          <View style={styles.microInsight}>
+            <Text style={styles.microLabel}>Payment capture</Text>
+            <Text style={styles.microValue}>{stats.paymentCaptureRate}%</Text>
+          </View>
+        </View>
+        <View style={styles.insightRow}>
+          <View style={styles.microInsight}>
             <Text style={styles.microLabel}>Reviews collected</Text>
             <Text style={styles.microValue}>{stats.totalReviews}</Text>
           </View>
           <View style={styles.microInsight}>
-            <Text style={styles.microLabel}>Conversion-ready</Text>
-            <Text style={styles.microValue}>{stats.bookingsCompleted + stats.pendingRequests}</Text>
+            <Text style={styles.microLabel}>Promo/referral bookings</Text>
+            <Text style={styles.microValue}>{stats.discountedBookings}</Text>
+          </View>
+        </View>
+        <View style={styles.funnelCard}>
+          <Text style={styles.funnelTitle}>Pipeline snapshot</Text>
+          <View style={styles.funnelRow}>
+            <View style={styles.funnelMetric}>
+              <Text style={styles.funnelValue}>{stats.pendingRequests}</Text>
+              <Text style={styles.funnelLabel}>Pending</Text>
+            </View>
+            <View style={styles.funnelMetric}>
+              <Text style={styles.funnelValue}>{stats.convertedBookings}</Text>
+              <Text style={styles.funnelLabel}>Converted</Text>
+            </View>
+            <View style={styles.funnelMetric}>
+              <Text style={styles.funnelValue}>{stats.cancelledBookings}</Text>
+              <Text style={styles.funnelLabel}>Cancelled</Text>
+            </View>
+            <View style={styles.funnelMetric}>
+              <Text style={styles.funnelValue}>{stats.totalGrounds}</Text>
+              <Text style={styles.funnelLabel}>Venues</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -201,6 +264,11 @@ const styles = StyleSheet.create({
     color: '#DCE7FF',
     marginTop: 4,
   },
+  primaryMeta: {
+    ...theme.typography.caption,
+    color: '#DCE7FF',
+    marginTop: theme.spacing.s,
+  },
   statValue: {
     ...theme.typography.h2,
     color: theme.colors.textMain,
@@ -254,5 +322,35 @@ const styles = StyleSheet.create({
     ...theme.typography.h2,
     color: theme.colors.textMain,
     marginTop: theme.spacing.s,
+  },
+  funnelCard: {
+    backgroundColor: theme.colors.surfaceDark,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.l,
+    marginTop: theme.spacing.l,
+  },
+  funnelTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.white,
+    marginBottom: theme.spacing.m,
+  },
+  funnelRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.s,
+  },
+  funnelMetric: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: theme.borderRadius.l,
+    padding: theme.spacing.m,
+  },
+  funnelValue: {
+    ...theme.typography.h3,
+    color: theme.colors.white,
+  },
+  funnelLabel: {
+    ...theme.typography.caption,
+    color: '#B3C7DC',
+    marginTop: 4,
   },
 });

@@ -9,6 +9,9 @@ export interface User {
   avatar?: string;
   city?: string;
   state?: string;
+  referral_code?: string;
+  referred_by_name?: string;
+  referral_count?: number;
 }
 
 interface AuthState {

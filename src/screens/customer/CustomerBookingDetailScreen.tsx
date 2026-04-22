@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -16,18 +16,7 @@ export default function CustomerBookingDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
-    fetchBooking();
-  }, [bookingId]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchBooking();
-    });
-    return unsubscribe;
-  }, [navigation, bookingId]);
-
-  const fetchBooking = async () => {
+  const fetchBooking = useCallback(async () => {
     try {
       setLoading(true);
       const res = await bookingsAPI.detail(bookingId);
@@ -37,7 +26,18 @@ export default function CustomerBookingDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [bookingId]);
+
+  useEffect(() => {
+    fetchBooking();
+  }, [fetchBooking]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchBooking();
+    });
+    return unsubscribe;
+  }, [navigation, fetchBooking]);
 
   const handleCancel = async () => {
     try {
@@ -77,6 +77,17 @@ export default function CustomerBookingDetailScreen() {
           <Text style={styles.infoText}>Payment: {booking.payment_status_display || booking.payment_status}</Text>
           <Text style={styles.infoText}>Outstanding: ₹{booking.outstanding_amount}</Text>
         </View>
+
+        {booking.booked_slots?.length > 1 ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Booked slots</Text>
+            {booking.booked_slots.map((item: any) => (
+              <Text key={item.id || item.time_slot?.id} style={styles.infoText}>
+                {item.time_slot?.start_time?.slice(0, 5)} - {item.time_slot?.end_time?.slice(0, 5)}
+              </Text>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Customer details</Text>

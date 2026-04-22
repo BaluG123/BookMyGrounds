@@ -6,7 +6,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { GroundCard } from '../../components/GroundCard';
 import { NotificationBell } from '../../components/NotificationBell';
-import { theme, getGreeting, sportColors } from '../../utils/theme';
+import { theme, getGreeting } from '../../utils/theme';
 import { AppDispatch, RootState } from '../../store';
 import { groundsAPI } from '../../api/grounds';
 import { setGroundsList, setLoading } from '../../store/slices/groundsSlice';
@@ -70,6 +70,8 @@ export default function HomeScreen() {
     .toUpperCase() || 'BG';
 
   const featuredCount = groundsList.length;
+  const referralCode = user?.referral_code;
+  const referralCount = Number(user?.referral_count || 0);
 
   const renderHeader = () => (
     <View>
@@ -92,9 +94,9 @@ export default function HomeScreen() {
       {/* Hero Card */}
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>YOUR PLAYBOOK</Text>
-        <Text style={styles.heroTitle}>Find your next winning turf.</Text>
+        <Text style={styles.heroTitle}>Book premium grounds before the rush.</Text>
         <Text style={styles.heroSubtitle}>
-          Curated venues, premium surfaces, and smoother bookings — all in one place.
+          High-intent discovery, trusted reviews, and one-tap payments built to convert searches into repeat play.
         </Text>
 
         <View style={styles.heroMetrics}>
@@ -115,6 +117,27 @@ export default function HomeScreen() {
           </View>
         </View>
       </View>
+
+      {referralCode ? (
+        <View style={styles.referralCard}>
+          <View style={styles.referralTop}>
+            <View>
+              <Text style={styles.referralEyebrow}>REFERRAL LOCKER</Text>
+              <Text style={styles.referralTitle}>Share your code and bring your squad in.</Text>
+            </View>
+            <View style={styles.referralIcon}>
+              <Icon name="gift-outline" size={20} color={theme.colors.primaryDark} />
+            </View>
+          </View>
+          <View style={styles.referralCodeRow}>
+            <Text style={styles.referralCode}>{referralCode}</Text>
+            <Text style={styles.referralMeta}>{referralCount} signup{referralCount === 1 ? '' : 's'}</Text>
+          </View>
+          <Text style={styles.referralCopy}>
+            Ask new players to enter this code during signup. Their first booking can unlock referral pricing automatically.
+          </Text>
+        </View>
+      ) : null}
 
       {/* Sport Category Filters */}
       <ScrollView
@@ -270,6 +293,57 @@ const styles = StyleSheet.create({
     ...theme.typography.caption,
     color: '#B3C7DC',
     marginTop: 2,
+  },
+  referralCard: {
+    backgroundColor: '#FFF6E7',
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.l,
+    marginBottom: theme.spacing.m,
+    borderWidth: 1,
+    borderColor: '#F4DEB2',
+  },
+  referralTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: theme.spacing.m,
+  },
+  referralEyebrow: {
+    ...theme.typography.caption,
+    color: '#9C6A00',
+    marginBottom: 6,
+  },
+  referralTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.primaryDark,
+  },
+  referralIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  referralCodeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: theme.spacing.m,
+    marginBottom: theme.spacing.s,
+  },
+  referralCode: {
+    ...theme.typography.h2,
+    color: theme.colors.primaryDark,
+    letterSpacing: 1.2,
+  },
+  referralMeta: {
+    ...theme.typography.bodyS,
+    color: '#9C6A00',
+  },
+  referralCopy: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMuted,
   },
   // Sport Filters
   sportFilterRow: {

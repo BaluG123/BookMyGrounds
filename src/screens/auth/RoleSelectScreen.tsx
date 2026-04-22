@@ -11,11 +11,23 @@ export default function RoleSelectScreen() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-        <Text style={styles.eyebrow}>START HERE</Text>
-        <Text style={styles.title}>How should BookMyGrounds work for you?</Text>
-        <Text style={styles.subtitle}>
-          Pick the experience you want first. You can create the right account in the next step.
-        </Text>
+        <View style={styles.heroCard}>
+          <Text style={styles.eyebrow}>START HERE</Text>
+          <Text style={styles.title}>How should BookMyGrounds work for you?</Text>
+          <Text style={styles.subtitle}>
+            Pick the experience you want first. You can create the right account in the next step.
+          </Text>
+          <View style={styles.heroMetrics}>
+            <View style={styles.heroMetric}>
+              <Text style={styles.heroMetricValue}>Fast</Text>
+              <Text style={styles.heroMetricLabel}>Onboarding</Text>
+            </View>
+            <View style={styles.heroMetric}>
+              <Text style={styles.heroMetricValue}>Secure</Text>
+              <Text style={styles.heroMetricLabel}>Payments</Text>
+            </View>
+          </View>
+        </View>
 
         <TouchableOpacity
           style={styles.optionCard}
@@ -55,20 +67,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: theme.spacing.l,
   },
+  heroCard: {
+    backgroundColor: theme.colors.surfaceDark,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    marginBottom: theme.spacing.xl,
+    ...theme.shadows.strong,
+  },
   eyebrow: {
     ...theme.typography.caption,
-    color: theme.colors.primary,
+    color: '#9CCAFF',
     marginBottom: theme.spacing.s,
   },
   title: {
     ...theme.typography.h1,
-    color: theme.colors.textMain,
+    color: theme.colors.white,
     marginBottom: theme.spacing.s,
   },
   subtitle: {
     ...theme.typography.bodyL,
-    color: theme.colors.textMuted,
-    marginBottom: theme.spacing.xl,
+    color: '#B3C7DC',
+  },
+  heroMetrics: {
+    flexDirection: 'row',
+    gap: theme.spacing.s,
+    marginTop: theme.spacing.l,
+  },
+  heroMetric: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: theme.borderRadius.l,
+    padding: theme.spacing.m,
+  },
+  heroMetricValue: {
+    ...theme.typography.h3,
+    color: theme.colors.white,
+  },
+  heroMetricLabel: {
+    ...theme.typography.caption,
+    color: '#B3C7DC',
+    marginTop: 2,
   },
   optionCard: {
     flexDirection: 'row',

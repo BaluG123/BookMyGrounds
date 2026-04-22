@@ -1,0 +1,5 @@
+What’s new in this release:
+- Added owner revenue and conversion analytics panel
+- Added promo and referral code support across backend and app flows
+- Improved onboarding and home screen polish
+- Tightened payment and booking experience details

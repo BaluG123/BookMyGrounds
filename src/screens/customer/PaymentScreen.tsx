@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, AppState, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import RazorpayCheckout from 'react-native-razorpay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -34,8 +34,6 @@ export default function PaymentScreen() {
     transaction_id: '',
   });
   const [isTestMode, setIsTestMode] = useState(false);
-  const appStateRef = useRef(AppState.currentState);
-
   // Success animation refs
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
@@ -95,7 +93,7 @@ export default function PaymentScreen() {
           const parsed = JSON.parse(userData);
           setUserRole(parsed.role);
         }
-      } catch (e) {
+      } catch {
         console.warn('Failed to fetch user role');
       }
     };
@@ -288,6 +286,12 @@ export default function PaymentScreen() {
             </View>
           </View>
           <View style={styles.amountRow}>
+            {Number(booking.base_amount || 0) > Number(booking.total_amount || 0) ? (
+              <View style={styles.amountBlock}>
+                <Text style={styles.amountLabel}>Base</Text>
+                <Text style={styles.amountValue}>₹{booking.base_amount}</Text>
+              </View>
+            ) : null}
             <View style={styles.amountBlock}>
               <Text style={styles.amountLabel}>Total</Text>
               <Text style={styles.amountValue}>₹{booking.total_amount}</Text>
@@ -299,6 +303,20 @@ export default function PaymentScreen() {
               </Text>
             </View>
           </View>
+          {Number(booking.discount_amount || 0) > 0 ? (
+            <View style={styles.offerSummary}>
+              <View style={styles.offerSummaryRow}>
+                <Text style={styles.offerSummaryLabel}>Savings applied</Text>
+                <Text style={styles.offerSummaryValue}>-₹{booking.discount_amount}</Text>
+              </View>
+              {booking.promo_code_display ? (
+                <Text style={styles.offerSummaryMeta}>Promo code: {booking.promo_code_display}</Text>
+              ) : null}
+              {booking.referral_code_used ? (
+                <Text style={styles.offerSummaryMeta}>Referral code: {booking.referral_code_used}</Text>
+              ) : null}
+            </View>
+          ) : null}
           <View style={styles.statusRow}>
             <Icon name="information-circle-outline" size={16} color={theme.colors.textSoft} />
             <Text style={styles.statusText}>
@@ -524,6 +542,30 @@ const styles = StyleSheet.create({
   statusText: {
     ...theme.typography.bodyS,
     color: '#B3C7DC',
+  },
+  offerSummary: {
+    marginBottom: theme.spacing.m,
+    backgroundColor: '#E9FFF7',
+    borderRadius: theme.borderRadius.l,
+    padding: theme.spacing.m,
+  },
+  offerSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  offerSummaryLabel: {
+    ...theme.typography.bodyM,
+    color: theme.colors.primaryDark,
+  },
+  offerSummaryValue: {
+    ...theme.typography.h3,
+    color: theme.colors.success,
+  },
+  offerSummaryMeta: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    marginTop: 4,
   },
   // Sandbox
   sandboxBanner: {

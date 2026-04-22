@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { groundsAPI } from '../api/grounds';
 import { theme } from '../utils/theme';
 import Icon from 'react-native-vector-icons/Ionicons';

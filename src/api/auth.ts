@@ -52,12 +52,12 @@ export const authAPI = {
       if (pushToken) {
         try {
           await api.post('/auth/push/unregister/', { token: pushToken });
-        } catch (error) {
+        } catch {
           console.warn('Push unregister failed during logout');
         }
       }
       await api.post('/auth/logout/');
-    } catch (e) {
+    } catch {
       console.warn('Backend logout failed, ignoring local wipe');
     }
     await AsyncStorage.multiRemove(['auth_token', 'user_data', 'push_token']);

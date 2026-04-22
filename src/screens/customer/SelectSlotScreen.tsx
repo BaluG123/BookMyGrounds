@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import { bookingsAPI } from '../../api/bookings';
 import { groundsAPI } from '../../api/grounds';
 import { getErrorMessage } from '../../utils/error';
 import { useAppSelector } from '../../store';
+import { getDisplayAmount, getDurationLabel, getEffectivePlanPrice } from '../../utils/pricing';
+import { Input } from '../../components/Input';
 
 function formatDateLabel(date: Date) {
   return date.toLocaleDateString('en-IN', {
@@ -33,6 +35,10 @@ function formatDateValue(date: Date) {
 function formatTimeLabel(time?: string) {
   if (!time) return '--:--';
   return time.slice(0, 5);
+}
+
+function sortSlotsByTime(slots: any[]) {
+  return [...slots].sort((first, second) => first.start_time.localeCompare(second.start_time));
 }
 
 function resolveMatchingPricingPlan(ground: any, slot: any) {
@@ -67,8 +73,10 @@ export default function SelectSlotScreen() {
   const [slots, setSlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(formatDateValue(new Date()));
+  const [promoCode, setPromoCode] = useState('');
+  const [referralCode, setReferralCode] = useState('');
 
   const dateOptions = useMemo(
     () =>
@@ -83,35 +91,19 @@ export default function SelectSlotScreen() {
     [],
   );
 
-  useEffect(() => {
-    if (!groundId) {
-      Alert.alert('Missing turf', 'No turf was selected.');
-      navigation.goBack();
-      return;
-    }
-    fetchGround();
-  }, [groundId, navigation]);
-
-  useEffect(() => {
-    if (!groundId) {
-      return;
-    }
-    fetchSlots(selectedDate);
-  }, [groundId, selectedDate]);
-
-  const fetchGround = async () => {
+  const fetchGround = useCallback(async () => {
     try {
       const res = await groundsAPI.detail(groundId);
       setGround(res.data);
     } catch (error) {
       Alert.alert('Unable to load turf', getErrorMessage(error, 'Please try again.'));
     }
-  };
+  }, [groundId]);
 
-  const fetchSlots = async (date: string) => {
+  const fetchSlots = useCallback(async (date: string) => {
     try {
       setLoading(true);
-      setSelectedSlot(null);
+      setSelectedSlots([]);
       const res = await bookingsAPI.listSlots(groundId, date);
       setSlots(res.data.results || res.data || []);
     } catch (error) {
@@ -120,13 +112,76 @@ export default function SelectSlotScreen() {
     } finally {
       setLoading(false);
     }
+  }, [groundId]);
+
+  useEffect(() => {
+    if (!groundId) {
+      Alert.alert('Missing turf', 'No turf was selected.');
+      navigation.goBack();
+      return;
+    }
+    fetchGround();
+  }, [fetchGround, groundId, navigation]);
+
+  useEffect(() => {
+    if (!groundId) {
+      return;
+    }
+    fetchSlots(selectedDate);
+  }, [fetchSlots, groundId, selectedDate]);
+
+  const selectedSlotData = sortSlotsByTime(
+    slots.filter(slot => selectedSlots.includes(slot.id))
+  );
+  const selectedSlotRange = selectedSlotData.length > 0 ? {
+    start_time: selectedSlotData[0].start_time,
+    end_time: selectedSlotData[selectedSlotData.length - 1].end_time,
+  } : null;
+  const matchedPricingPlan = selectedSlotRange ? resolveMatchingPricingPlan(ground, selectedSlotRange) : null;
+  const selectedSlotPrice = getEffectivePlanPrice(matchedPricingPlan, selectedDate);
+
+  const handleSlotToggle = (slot: any) => {
+    if (!slot?.is_bookable) {
+      return;
+    }
+
+    setSelectedSlots(current => {
+      if (current.length === 0) {
+        return [slot.id];
+      }
+
+      const selectedData = sortSlotsByTime(slots.filter(item => current.includes(item.id)));
+      const firstSelected = selectedData[0];
+      const lastSelected = selectedData[selectedData.length - 1];
+      const isAlreadySelected = current.includes(slot.id);
+
+      if (isAlreadySelected) {
+        if (selectedData.length === 1) {
+          return [];
+        }
+        if (slot.id === firstSelected.id) {
+          return selectedData.slice(1).map(item => item.id);
+        }
+        if (slot.id === lastSelected.id) {
+          return selectedData.slice(0, -1).map(item => item.id);
+        }
+        return [slot.id];
+      }
+
+      if (slot.end_time === firstSelected.start_time) {
+        return [slot.id, ...selectedData.map(item => item.id)];
+      }
+
+      if (lastSelected.end_time === slot.start_time) {
+        return [...selectedData.map(item => item.id), slot.id];
+      }
+
+      return [slot.id];
+    });
   };
 
-  const selectedSlotData = slots.find(slot => slot.id === selectedSlot);
-  const matchedPricingPlan = selectedSlotData ? resolveMatchingPricingPlan(ground, selectedSlotData) : null;
-
   const handleReserve = async () => {
-    if (!ground || !selectedSlotData) {
+    if (!ground || selectedSlotData.length === 0) {
       return;
     }
 
@@ -141,8 +196,7 @@ export default function SelectSlotScreen() {
       }
 
       // 100 INR Minimum Check
-      const isWeekend = new Date(selectedDate).getDay() >= 5; 
-      const estimatedPrice = isWeekend ? (matchedPricingPlan.weekend_price || matchedPricingPlan.price) : matchedPricingPlan.price;
+      const estimatedPrice = getEffectivePlanPrice(matchedPricingPlan, selectedDate);
       
       if (Number(estimatedPrice || 0) < 100) {
         Alert.alert(
@@ -154,16 +208,19 @@ export default function SelectSlotScreen() {
 
       const response = await bookingsAPI.create({
         ground: ground.id,
-        time_slot: selectedSlotData.id,
+        time_slot: selectedSlotData[0].id,
+        time_slots: selectedSlotData.map(slot => slot.id),
         pricing_plan: matchedPricingPlan.id,
         booking_date: selectedDate,
-        start_time: selectedSlotData.start_time,
-        end_time: selectedSlotData.end_time,
+        start_time: selectedSlotData[0].start_time,
+        end_time: selectedSlotData[selectedSlotData.length - 1].end_time,
         customer_name: user?.full_name || '',
         customer_phone: user?.phone || '',
         player_count: 1,
         notes: '',
         special_requests: '',
+        promo_code: promoCode.trim().toUpperCase() || undefined,
+        referral_code: referralCode.trim().toUpperCase() || undefined,
       });
 
       const booking = response.data;
@@ -192,7 +249,7 @@ export default function SelectSlotScreen() {
           <Text style={styles.eyebrow}>BOOKING DATE</Text>
           <Text style={styles.heroTitle}>Pick the day, then lock the slot.</Text>
           <Text style={styles.heroText}>
-            Live availability is loaded from the backend for each date below.
+            Live availability is loaded from the backend for each date below. Tap adjacent slots to extend one booking window.
           </Text>
         </View>
 
@@ -224,7 +281,7 @@ export default function SelectSlotScreen() {
           <View style={styles.grid}>
             {slots.map(slot => {
               const isAvailable = slot.is_bookable;
-              const isSelected = selectedSlot === slot.id;
+              const isSelected = selectedSlots.includes(slot.id);
 
               return (
                 <Button
@@ -233,33 +290,65 @@ export default function SelectSlotScreen() {
                   variant={isSelected ? 'primary' : isAvailable ? 'outline' : 'text'}
                   disabled={!isAvailable}
                   style={[styles.slotBtn, !isAvailable && styles.slotBtnDisabled]}
-                  onPress={() => setSelectedSlot(slot.id)}
+                  onPress={() => handleSlotToggle(slot)}
                 />
               );
             })}
           </View>
         )}
+
+        <View style={styles.offerCard}>
+          <View style={styles.offerHeader}>
+            <Icon name="pricetag-outline" size={18} color={theme.colors.primary} />
+            <Text style={styles.offerTitle}>Promo and referral</Text>
+          </View>
+          <Text style={styles.offerText}>
+            Add a promo code for campaign pricing or a referral code if this booking is eligible for invite pricing.
+          </Text>
+          <Input
+            label="Promo Code"
+            value={promoCode}
+            autoCapitalize="characters"
+            onChangeText={value => setPromoCode(value.toUpperCase())}
+            placeholder="SAVE500"
+          />
+          <Input
+            label="Referral Code"
+            value={referralCode}
+            autoCapitalize="characters"
+            onChangeText={value => setReferralCode(value.toUpperCase())}
+            placeholder={user?.referral_code ? `Not your own code (${user.referral_code})` : 'BMGTEAM'}
+            containerStyle={styles.offerInputLast}
+          />
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
         <View style={styles.footerSummary}>
           <Text style={styles.footerLabel}>Selected</Text>
           <Text style={styles.footerValue}>
-            {selectedSlotData
-              ? `${formatTimeLabel(selectedSlotData.start_time)} - ${formatTimeLabel(selectedSlotData.end_time)}`
+            {selectedSlotData.length > 0
+              ? `${formatTimeLabel(selectedSlotData[0].start_time)} - ${formatTimeLabel(selectedSlotData[selectedSlotData.length - 1].end_time)}`
               : 'Choose a slot to continue'}
           </Text>
-          {selectedSlotData ? (
+          {selectedSlotData.length > 0 ? (
             <Text style={styles.footerHint}>
               {matchedPricingPlan
-                ? `Pricing plan: ${matchedPricingPlan.duration_display || matchedPricingPlan.duration_type}`
+                ? `${selectedSlotData.length} slot${selectedSlotData.length > 1 ? 's' : ''} • ${getDurationLabel(matchedPricingPlan)} • ${getDisplayAmount(selectedSlotPrice)}`
                 : 'No active pricing plan found for this slot duration.'}
+            </Text>
+          ) : null}
+          {promoCode.trim() || referralCode.trim() ? (
+            <Text style={styles.footerOfferHint}>
+              {promoCode.trim()
+                ? `Promo: ${promoCode.trim().toUpperCase()}`
+                : `Referral: ${referralCode.trim().toUpperCase()}`} will be validated before payment.
             </Text>
           ) : null}
         </View>
         <Button
-          title="Reserve Slot"
-          disabled={!selectedSlot || !matchedPricingPlan}
+          title={selectedSlotPrice ? `Reserve for ${getDisplayAmount(selectedSlotPrice)}` : 'Reserve Slot'}
+          disabled={selectedSlotData.length === 0 || !matchedPricingPlan}
           isLoading={submitting}
           onPress={handleReserve}
         />
@@ -371,6 +460,31 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     textAlign: 'center',
   },
+  offerCard: {
+    marginTop: theme.spacing.l,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.l,
+    ...theme.shadows.soft,
+  },
+  offerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    marginBottom: theme.spacing.s,
+  },
+  offerTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.textMain,
+  },
+  offerText: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.m,
+  },
+  offerInputLast: {
+    marginBottom: 0,
+  },
   footer: {
     padding: theme.spacing.m,
     borderTopWidth: 1,
@@ -392,6 +506,11 @@ const styles = StyleSheet.create({
   footerHint: {
     ...theme.typography.caption,
     color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
+  },
+  footerOfferHint: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
     marginTop: theme.spacing.xs,
   },
 });

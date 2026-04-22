@@ -1,8 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { Platform } from 'react-native';
-
 // Use PythonAnywhere server
 export const API_BASE_URL = 'https://bookmyground.pythonanywhere.com/api/v1';
 

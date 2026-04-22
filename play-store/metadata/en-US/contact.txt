@@ -1,0 +1,3 @@
+Support email: help@bookmygrounds.in
+Website: https://bookmyground.pythonanywhere.com/
+Privacy policy: https://bookmyground.pythonanywhere.com/policy/

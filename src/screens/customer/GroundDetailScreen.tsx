@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Image, ActivityIndicator,
   Alert, TouchableOpacity, Dimensions, NativeSyntheticEvent, NativeScrollEvent,
@@ -12,6 +12,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { getErrorMessage } from '../../utils/error';
 import { openCoordinatesInGoogleMaps } from '../../utils/map';
+import { getActivePricingPlans, getDisplayAmount, getGroundPriceHeadline } from '../../utils/pricing';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=600&auto=format&fit=crop';
@@ -43,12 +44,7 @@ export default function GroundDetailScreen() {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  useEffect(() => {
-    fetchDetail();
-    fetchReviews();
-  }, [id]);
-
-  const fetchDetail = async () => {
+  const fetchDetail = useCallback(async () => {
     try {
       setLoading(true);
       const res = await groundsAPI.detail(id);
@@ -58,16 +54,21 @@ export default function GroundDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       const res = await reviewsAPI.list(id);
       setReviews(res.data.results || res.data || []);
     } catch (error) {
       console.log('Failed to fetch reviews', error);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchDetail();
+    fetchReviews();
+  }, [fetchDetail, fetchReviews]);
 
   const handleFavoriteToggle = async () => {
     if (!ground) {
@@ -116,8 +117,9 @@ export default function GroundDetailScreen() {
   const images = ground.images?.length > 0
     ? ground.images.map((img: any) => img.image)
     : [DEFAULT_IMAGE];
-  const pricingText = ground.min_price?.amount || ground.price || '500';
   const amenities = ground.amenities || ground.amenity_details || [];
+  const activePricingPlans = getActivePricingPlans(ground);
+  const priceHeadline = getGroundPriceHeadline(ground);
 
   return (
     <ScreenContainer>
@@ -227,6 +229,29 @@ export default function GroundDetailScreen() {
             <DetailItem icon="football-outline" label="Bookings" value={`${ground.total_bookings || 0} completed`} />
           </View>
 
+          {activePricingPlans.length > 0 ? (
+            <>
+              <Text style={styles.sectionTitle}>Pricing</Text>
+              <View style={styles.pricingCard}>
+                <Text style={styles.pricingIntro}>
+                  These are the live rates configured by the ground owner.
+                </Text>
+                {activePricingPlans.map((plan: any) => (
+                  <View key={plan.id} style={styles.pricingRow}>
+                    <View style={styles.pricingCopy}>
+                      <Text style={styles.pricingDuration}>{plan.duration_display}</Text>
+                      <Text style={styles.pricingMeta}>
+                        Weekday {getDisplayAmount(plan.price)}
+                        {plan.weekend_price ? `  •  Weekend ${getDisplayAmount(plan.weekend_price)}` : ''}
+                      </Text>
+                    </View>
+                    <Text style={styles.pricingValue}>{getDisplayAmount(plan.price)}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : null}
+
           {/* Amenities */}
           {amenities.length > 0 && (
             <>
@@ -331,7 +356,8 @@ export default function GroundDetailScreen() {
       <View style={styles.bookingCard}>
         <View>
           <Text style={styles.priceLabel}>Starting at</Text>
-          <Text style={styles.priceValue}>₹{pricingText}/hr</Text>
+          <Text style={styles.priceValue}>{priceHeadline.amount}</Text>
+          <Text style={styles.priceSubtext}>{priceHeadline.duration}</Text>
         </View>
         <Button
           title="Book Now"
@@ -524,6 +550,46 @@ const styles = StyleSheet.create({
     color: theme.colors.textMain,
     marginTop: 2,
   },
+  pricingCard: {
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.m,
+    marginBottom: theme.spacing.m,
+    ...theme.shadows.soft,
+  },
+  pricingIntro: {
+    ...theme.typography.bodyS,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.m,
+  },
+  pricingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.s,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  pricingCopy: {
+    flex: 1,
+    marginRight: theme.spacing.m,
+  },
+  pricingDuration: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMain,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  pricingMeta: {
+    ...theme.typography.bodyS,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+  },
+  pricingValue: {
+    ...theme.typography.bodyM,
+    color: theme.colors.primaryDark,
+    fontWeight: '800',
+  },
   // Amenities
   amenitiesGrid: {
     flexDirection: 'row',
@@ -666,5 +732,11 @@ const styles = StyleSheet.create({
   priceValue: {
     ...theme.typography.h2,
     color: theme.colors.white,
+  },
+  priceSubtext: {
+    ...theme.typography.bodyS,
+    color: '#9CCAFF',
+    marginTop: 2,
+    textTransform: 'capitalize',
   },
 });

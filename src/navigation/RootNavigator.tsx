@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { ActivityIndicator, Animated, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector, RootState } from '../store';
@@ -21,6 +21,7 @@ import { navigationRef } from './navigationService';
 import { navigationTheme, theme } from '../utils/theme';
 
 const RootStack = createNativeStackNavigator();
+const APP_LOGO = require('../assets/branding/bookmygrounds-logo-1024.png');
 
 function SplashScreen() {
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
@@ -58,7 +59,7 @@ function SplashScreen() {
         }),
       ]),
     ).start();
-  }, []);
+  }, [opacityAnim, pulseAnim, scaleAnim]);
 
   return (
     <View style={styles.loadingScreen}>
@@ -69,12 +70,12 @@ function SplashScreen() {
         ]}
       >
         <View style={styles.loadingBadge}>
-          <Text style={styles.loadingBadgeText}>BG</Text>
+          <Image source={APP_LOGO} style={styles.loadingLogo} resizeMode="contain" />
         </View>
         <Text style={styles.loadingEyebrow}>BOOKMYGROUNDS</Text>
-        <Text style={styles.loadingTitle}>Setting up your arena</Text>
+        <Text style={styles.loadingTitle}>Book better grounds, faster</Text>
         <Text style={styles.loadingSubtitle}>
-          Restoring your last session and preparing the new interface.
+          Live slots, secure checkout, and venue-ready operations in one app.
         </Text>
         <Animated.View style={{ opacity: pulseAnim, marginTop: theme.spacing.xl }}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -128,7 +129,7 @@ export default function RootNavigator() {
     return () => {
       cleanup?.();
     };
-  }, [token, user?.id]);
+  }, [token, user]);
 
   if (isLoading) {
     return <SplashScreen />;
@@ -176,17 +177,19 @@ const styles = StyleSheet.create({
     ...theme.shadows.strong,
   },
   loadingBadge: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    backgroundColor: theme.colors.primary,
+    width: 110,
+    height: 110,
+    borderRadius: 34,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: theme.spacing.l,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
-  loadingBadgeText: {
-    ...theme.typography.h1,
-    color: theme.colors.white,
+  loadingLogo: {
+    width: 82,
+    height: 82,
   },
   loadingEyebrow: {
     ...theme.typography.caption,

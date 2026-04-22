@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Image, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Input } from '../../components/Input';
@@ -17,6 +17,42 @@ GoogleSignin.configure({
   webClientId: '614899789202-l1ujssb8k8odq4tge5273v6k45j8usfj.apps.googleusercontent.com',
 });
 
+const APP_LOGO = require('../../assets/branding/bookmygrounds-logo-1024.png');
+
+function getGoogleSignInErrorMessage(error: any) {
+  const code = error?.code;
+  const message = typeof error?.message === 'string' ? error.message : '';
+
+  if (code === statusCodes.SIGN_IN_CANCELLED) {
+    return 'Google sign-in was cancelled.';
+  }
+
+  if (code === statusCodes.IN_PROGRESS) {
+    return 'Google sign-in is already in progress.';
+  }
+
+  if (code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+    return 'Google Play Services is unavailable or out of date on this device.';
+  }
+
+  if (code === 10 || code === '10' || /DEVELOPER_ERROR/i.test(message)) {
+    if (Platform.OS === 'android') {
+      return 'Google Sign-In is misconfigured for this Android build. Verify the Firebase Android OAuth client for package com.bookmygrounds includes the SHA-1 and SHA-256 of the keystore used to build this app, then download the updated google-services.json and rebuild.';
+    }
+
+    return 'Google Sign-In is misconfigured for iOS. Add the correct GoogleService-Info.plist and URL scheme for this app target, then rebuild.';
+  }
+
+  if (
+    Platform.OS === 'ios' &&
+    /url scheme|reversed client id|client id|google service-info/i.test(message)
+  ) {
+    return 'Google Sign-In is not wired for iOS yet. Add GoogleService-Info.plist and the reversed client ID URL scheme in Info.plist, then rebuild.';
+  }
+
+  return getErrorMessage(error, 'Unable to complete Google sign-in right now.');
+}
+
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
@@ -24,7 +60,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const showPassword = false;
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -63,7 +99,7 @@ export default function LoginScreen() {
       const res = await authAPI.firebaseLogin(firebaseToken, 'customer');
       dispatch(setCredentials({ token: res.token, user: res.user }));
     } catch (error: any) {
-      Alert.alert('Google sign-in failed', getErrorMessage(error, 'Unable to complete Google sign-in right now.'));
+      Alert.alert('Google sign-in failed', getGoogleSignInErrorMessage(error));
     } finally {
       setGoogleLoading(false);
     }
@@ -75,16 +111,18 @@ export default function LoginScreen() {
         {/* Brand Badge */}
         <View style={styles.brandRow}>
           <View style={styles.brandBadge}>
-            <Text style={styles.brandBadgeText}>BG</Text>
+            <Image source={APP_LOGO} style={styles.brandLogo} resizeMode="contain" />
           </View>
+          <Text style={styles.brandName}>BookMyGrounds</Text>
+          <Text style={styles.brandTagline}>Built for fast booking and repeat play.</Text>
         </View>
 
         {/* Hero Card */}
         <View style={styles.heroCard}>
           <Text style={styles.eyebrow}>BOOK SMARTER</Text>
-          <Text style={styles.title}>Your next game night starts here.</Text>
+          <Text style={styles.title}>Turn nearby grounds into daily revenue.</Text>
           <Text style={styles.subtitle}>
-            Discover premium turfs, manage bookings, and keep every session feeling effortless.
+            Discover premium turfs, convert drop-ins into confirmed bookings, and keep every session moving.
           </Text>
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
@@ -173,18 +211,27 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.l,
   },
   brandBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: theme.colors.primary,
+    width: 96,
+    height: 96,
+    borderRadius: 30,
+    backgroundColor: theme.colors.surfaceDark,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.strong,
   },
-  brandBadgeText: {
+  brandLogo: {
+    width: 72,
+    height: 72,
+  },
+  brandName: {
     ...theme.typography.h2,
-    color: theme.colors.white,
-    fontWeight: '800',
+    color: theme.colors.textMain,
+    marginTop: theme.spacing.m,
+  },
+  brandTagline: {
+    ...theme.typography.bodyS,
+    color: theme.colors.textMuted,
+    marginTop: 4,
   },
   heroCard: {
     backgroundColor: theme.colors.surfaceDark,

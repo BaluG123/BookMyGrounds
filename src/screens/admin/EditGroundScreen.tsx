@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -56,11 +56,7 @@ export default function EditGroundScreen() {
   const [newImages, setNewImages] = useState<any[]>([]);
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchGroundData();
-  }, [groundId]);
-
-  const fetchGroundData = async () => {
+  const fetchGroundData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await groundsAPI.detail(groundId);
@@ -97,7 +93,11 @@ export default function EditGroundScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [groundId]);
+
+  useEffect(() => {
+    fetchGroundData();
+  }, [fetchGroundData]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -124,7 +124,7 @@ export default function EditGroundScreen() {
       
       const updateData = {
         ...formData,
-        max_players: parseInt(formData.max_players),
+        max_players: parseInt(formData.max_players, 10),
         amenity_ids: selectedAmenities,
       };
 

@@ -18,6 +18,7 @@ export default function RegisterScreen() {
     role: 'customer',
     city: '',
     state: '',
+    referral_code: '',
     password: '',
     password_confirm: '',
   });
@@ -63,6 +64,10 @@ export default function RegisterScreen() {
           <Text style={styles.eyebrow}>CREATE ACCOUNT</Text>
           <Text style={styles.title}>Build your matchday identity.</Text>
           <Text style={styles.subtitle}>{selectedRoleCopy}</Text>
+          <View style={styles.heroPill}>
+            <Icon name="gift-outline" size={16} color={theme.colors.white} />
+            <Text style={styles.heroPillText}>Have a referral code? Add it below before you create the account.</Text>
+          </View>
         </View>
 
         <View style={styles.formCard}>
@@ -131,6 +136,14 @@ export default function RegisterScreen() {
           </View>
 
           <Input
+            label="Referral Code (Optional)"
+            value={form.referral_code}
+            autoCapitalize="characters"
+            onChangeText={t => handleChange('referral_code', t.toUpperCase())}
+            leftIcon={<Icon name="pricetag-outline" size={18} color={theme.colors.textSoft} />}
+          />
+
+          <Input
             label="Password"
             value={form.password}
             secureTextEntry
@@ -189,6 +202,21 @@ const styles = StyleSheet.create({
   subtitle: {
     ...theme.typography.bodyL,
     color: theme.colors.textMuted,
+  },
+  heroPill: {
+    marginTop: theme.spacing.m,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: theme.borderRadius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignSelf: 'flex-start',
+  },
+  heroPillText: {
+    ...theme.typography.bodyS,
+    color: theme.colors.white,
   },
   formCard: {
     backgroundColor: 'rgba(255,255,255,0.95)',

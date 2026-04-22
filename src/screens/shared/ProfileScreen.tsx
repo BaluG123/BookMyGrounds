@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -11,6 +11,8 @@ import { theme } from '../../utils/theme';
 import { RootState, AppDispatch } from '../../store';
 import { authAPI } from '../../api/auth';
 import { logout, updateUser } from '../../store/slices/authSlice';
+
+const DEVELOPER_CONTACT_NUMBER = '+919380552833';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -25,14 +27,6 @@ export default function ProfileScreen() {
     city: user?.city || '',
     state: user?.state || '',
   });
-
-  // Refresh profile from server on focus
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      refreshProfile();
-    });
-    return unsubscribe;
-  }, [navigation]);
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -51,6 +45,14 @@ export default function ProfileScreen() {
       console.log('Profile refresh failed', error);
     }
   }, [dispatch, user]);
+
+  // Refresh profile from server on focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      refreshProfile();
+    });
+    return unsubscribe;
+  }, [navigation, refreshProfile]);
 
   const handleSaveProfile = async () => {
     try {
@@ -103,6 +105,23 @@ export default function ProfileScreen() {
       'Change Password',
       'To change your password, contact support at help@bookmygrounds.in or use the "Forgot Password" flow from the login screen.',
     );
+  };
+
+  const handleDeveloperContact = async () => {
+    const phoneUrl = `tel:${DEVELOPER_CONTACT_NUMBER}`;
+
+    try {
+      const supported = await Linking.canOpenURL(phoneUrl);
+
+      if (supported) {
+        await Linking.openURL(phoneUrl);
+        return;
+      }
+    } catch (error) {
+      console.log('Unable to open phone dialer', error);
+    }
+
+    Alert.alert('Developer Contact', DEVELOPER_CONTACT_NUMBER);
   };
 
   const initials = user?.full_name
@@ -236,6 +255,24 @@ export default function ProfileScreen() {
             label="Change Password"
             onPress={handleChangePassword}
           />
+          {user?.role === 'admin' ? (
+            <View style={styles.supportCard}>
+              <View style={styles.supportHeader}>
+                <Icon name="construct-outline" size={18} color={theme.colors.primary} />
+                <Text style={styles.supportTitle}>Developer contact</Text>
+              </View>
+              <Text style={styles.supportCopy}>
+                Ground owners can reach the app developer directly for rollout and support.
+              </Text>
+              <ProfileInfoRow icon="call-outline" label="Phone" value={DEVELOPER_CONTACT_NUMBER} />
+              <Button
+                title="Call Developer"
+                onPress={handleDeveloperContact}
+                variant="outline"
+                icon={<Icon name="call-outline" size={18} color={theme.colors.primaryDark} />}
+              />
+            </View>
+          ) : null}
           <View style={styles.logoutSpacer} />
           <Button
             title="Sign Out"
@@ -403,6 +440,28 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.l,
     ...theme.shadows.soft,
+  },
+  supportCard: {
+    marginTop: theme.spacing.m,
+    paddingTop: theme.spacing.m,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  supportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    marginBottom: theme.spacing.s,
+  },
+  supportTitle: {
+    ...theme.typography.bodyM,
+    color: theme.colors.textMain,
+    fontWeight: '700',
+  },
+  supportCopy: {
+    ...theme.typography.bodyS,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.m,
   },
   actionRow: {
     flexDirection: 'row',

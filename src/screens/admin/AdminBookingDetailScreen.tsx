@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -16,18 +16,7 @@ export default function AdminBookingDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<'confirm' | 'complete' | 'cancel' | null>(null);
 
-  useEffect(() => {
-    fetchBooking();
-  }, [bookingId]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchBooking();
-    });
-    return unsubscribe;
-  }, [navigation, bookingId]);
-
-  const fetchBooking = async () => {
+  const fetchBooking = useCallback(async () => {
     try {
       setLoading(true);
       const res = await bookingsAPI.detail(bookingId);
@@ -37,7 +26,18 @@ export default function AdminBookingDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [bookingId]);
+
+  useEffect(() => {
+    fetchBooking();
+  }, [fetchBooking]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchBooking();
+    });
+    return unsubscribe;
+  }, [navigation, fetchBooking]);
 
   const handleAction = async (action: 'confirm' | 'complete' | 'cancel') => {
     try {
@@ -90,6 +90,17 @@ export default function AdminBookingDetailScreen() {
           <Text style={styles.infoText}>Total: ₹{booking.total_amount}</Text>
           <Text style={styles.infoText}>Outstanding: ₹{booking.outstanding_amount}</Text>
         </View>
+
+        {booking.booked_slots?.length > 1 ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Booked slots</Text>
+            {booking.booked_slots.map((item: any) => (
+              <Text key={item.id || item.time_slot?.id} style={styles.infoText}>
+                {item.time_slot?.start_time?.slice(0, 5)} - {item.time_slot?.end_time?.slice(0, 5)}
+              </Text>
+            ))}
+          </View>
+        ) : null}
 
         {booking.notes || booking.special_requests ? (
           <View style={styles.card}>

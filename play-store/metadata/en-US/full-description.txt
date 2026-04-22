@@ -1,0 +1,14 @@
+BookMyGrounds helps players discover quality sports venues and reserve slots without the usual back-and-forth.
+
+Players can browse grounds, compare timings, pick slots, apply eligible promo or referral codes, and complete payments in one flow.
+
+Ground owners get a clean operating console for managing venues, tracking revenue and conversion, handling booking requests, updating slots, and keeping payout details ready for settlement.
+
+Key features:
+- Live ground discovery across popular sports
+- Slot selection with pricing visibility
+- Secure payment flow with Razorpay
+- Booking history, status tracking, and reviews
+- Owner dashboard with revenue and conversion insights
+- Promo and referral code support
+- Notifications for booking and payment events

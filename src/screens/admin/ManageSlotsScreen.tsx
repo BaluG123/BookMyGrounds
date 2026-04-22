@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { theme } from '../../utils/theme';
@@ -76,35 +75,16 @@ export default function ManageSlotsScreen() {
     [],
   );
 
-  useEffect(() => {
-    if (!groundId) {
-      Alert.alert('Missing turf', 'No turf was selected.');
-      navigation.goBack();
-      return;
-    }
-
-    if (!initialGround) {
-      fetchGround();
-    }
-  }, [groundId, initialGround, navigation]);
-
-  useEffect(() => {
-    if (!groundId) {
-      return;
-    }
-    fetchSlots(selectedDate);
-  }, [groundId, selectedDate]);
-
-  const fetchGround = async () => {
+  const fetchGround = useCallback(async () => {
     try {
       const res = await groundsAPI.detail(groundId);
       setGround(res.data);
     } catch (error) {
       Alert.alert('Unable to load turf', getErrorMessage(error, 'Please try again.'));
     }
-  };
+  }, [groundId]);
 
-  const fetchSlots = async (date: string) => {
+  const fetchSlots = useCallback(async (date: string) => {
     try {
       setLoading(true);
       const res = await bookingsAPI.listSlots(groundId, date);
@@ -115,7 +95,26 @@ export default function ManageSlotsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [groundId]);
+
+  useEffect(() => {
+    if (!groundId) {
+      Alert.alert('Missing turf', 'No turf was selected.');
+      navigation.goBack();
+      return;
+    }
+
+    if (!initialGround) {
+      fetchGround();
+    }
+  }, [fetchGround, groundId, initialGround, navigation]);
+
+  useEffect(() => {
+    if (!groundId) {
+      return;
+    }
+    fetchSlots(selectedDate);
+  }, [fetchSlots, groundId, selectedDate]);
 
   const handleGenerateSlots = async () => {
     if (!ground) {

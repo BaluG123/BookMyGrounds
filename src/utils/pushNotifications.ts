@@ -1,4 +1,4 @@
-import { Alert, Platform } from 'react-native';
+import { Alert, Platform, Vibration } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
 import { authAPI } from '../api/auth';
@@ -6,6 +6,28 @@ import { openFromNotification } from '../navigation/navigationService';
 import { emitNotificationEvent } from './notificationEvents';
 
 const PUSH_TOKEN_STORAGE_KEY = 'push_token';
+
+async function setupAndroidNotificationChannel() {
+  if (Platform.OS !== 'android') return;
+
+  try {
+    // Create a high-importance channel with vibration and default sound
+    // The android property exists at runtime but isn't in all TS definitions
+    const msg = messaging() as any;
+    if (msg.android?.createChannel) {
+      await msg.android.createChannel({
+        id: 'bookmygrounds_default',
+        name: 'BookMyGrounds Notifications',
+        importance: 4, // HIGH
+        vibration: true,
+        vibrationPattern: [0, 300, 100, 300],
+        sound: 'default',
+      });
+    }
+  } catch (error) {
+    console.log('Notification channel setup skipped or failed', error);
+  }
+}
 
 async function syncPushToken(token: string) {
   const previousToken = await AsyncStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
@@ -43,6 +65,9 @@ export async function initializePushNotifications() {
     return () => {};
   }
 
+  // Set up Android notification channel with vibration & sound
+  await setupAndroidNotificationChannel();
+
   const token = await messaging().getToken();
   if (token) {
     await syncPushToken(token);
@@ -59,6 +84,9 @@ export async function initializePushNotifications() {
   const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
     console.log('Foreground push received', remoteMessage?.messageId || remoteMessage?.notification?.title);
     emitNotificationEvent();
+
+    // Vibrate with a double-pulse pattern: [wait, vibrate, pause, vibrate]
+    Vibration.vibrate([0, 300, 100, 300]);
 
     const title = remoteMessage?.notification?.title || 'New update';
     const body = remoteMessage?.notification?.body || 'Open notifications to view the latest activity.';

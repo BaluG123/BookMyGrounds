@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -23,11 +23,11 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const hasFetched = useRef(false);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (isRefresh = false) => {
     try {
-      const firstLoad = notifications.length === 0 && !refreshing;
-      if (firstLoad) {
+      if (!hasFetched.current && !isRefresh) {
         setLoading(true);
       } else {
         setRefreshing(true);
@@ -35,6 +35,7 @@ export default function NotificationsScreen() {
 
       const res = await authAPI.listNotifications(unreadOnly ? { unread_only: true } : undefined);
       setNotifications(res.data.results || res.data || []);
+      hasFetched.current = true;
     } catch (error) {
       setNotifications([]);
       console.log('Notification fetch failed', getErrorMessage(error));
@@ -42,20 +43,21 @@ export default function NotificationsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [notifications.length, refreshing, unreadOnly]);
+  }, [unreadOnly]);
 
   useEffect(() => {
+    hasFetched.current = false;
     fetchNotifications();
   }, [fetchNotifications]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToNotificationEvents(fetchNotifications);
+    const unsubscribe = subscribeToNotificationEvents(() => fetchNotifications(true));
     return () => { unsubscribe(); };
   }, [fetchNotifications]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchNotifications();
+      fetchNotifications(true);
     });
     return unsubscribe;
   }, [fetchNotifications, navigation]);

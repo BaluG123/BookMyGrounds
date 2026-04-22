@@ -17,6 +17,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getErrorMessage } from '../../utils/error';
 import { openCoordinatesInGoogleMaps } from '../../utils/map';
+import { formatTime12h } from '../../utils/pricing';
 
 export default function GroundDetailScreen() {
   const navigation = useNavigation<any>();
@@ -218,7 +219,7 @@ export default function GroundDetailScreen() {
           <DetailRow label="Max Players" value={ground.max_players?.toString()} />
           <DetailRow
             label="Timings"
-            value={`${ground.opening_time} - ${ground.closing_time}`}
+            value={`${formatTime12h(ground.opening_time)} – ${formatTime12h(ground.closing_time)}`}
           />
         </View>
 
@@ -313,7 +314,7 @@ const DetailRow = ({ label, value }: { label: string; value?: string }) => (
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: 120,
   },
   loadingContainer: {
     flex: 1,

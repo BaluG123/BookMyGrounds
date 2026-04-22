@@ -99,3 +99,42 @@ export function getGroundPriceHeadline(ground: any) {
     supportsWeekendPricing: false,
   };
 }
+
+/**
+ * Convert a 24-hour time string like "06:00" or "14:30:00" to "6:00 AM" or "2:30 PM".
+ */
+export function formatTime12h(time?: string): string {
+  if (!time) return '--:--';
+
+  const parts = time.split(':');
+  let hour = Number(parts[0]);
+  const minute = parts[1] || '00';
+
+  if (isNaN(hour)) return time;
+
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+
+  return `${displayHour}:${minute} ${ampm}`;
+}
+
+/**
+ * Calculate the total price for a per_hour pricing plan across multiple slots.
+ * If the plan is not per_hour, returns the single plan price.
+ */
+export function getMultiSlotPrice(
+  plan: any,
+  totalDurationHours: number,
+  bookingDate?: string,
+): number | null {
+  if (!plan) return null;
+
+  const unitPrice = getEffectivePlanPrice(plan, bookingDate);
+  if (unitPrice === null) return null;
+
+  if (plan.duration_type === 'per_hour') {
+    return unitPrice * totalDurationHours;
+  }
+
+  return unitPrice;
+}

@@ -12,7 +12,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { getErrorMessage } from '../../utils/error';
 import { openCoordinatesInGoogleMaps } from '../../utils/map';
-import { getActivePricingPlans, getDisplayAmount, getGroundPriceHeadline } from '../../utils/pricing';
+import { getActivePricingPlans, getDisplayAmount, getGroundPriceHeadline, formatTime12h } from '../../utils/pricing';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=600&auto=format&fit=crop';
@@ -224,7 +224,7 @@ export default function GroundDetailScreen() {
           {/* Details */}
           <Text style={styles.sectionTitle}>Details</Text>
           <View style={styles.detailCard}>
-            <DetailItem icon="time-outline" label="Hours" value={`${ground.opening_time || '06:00'} - ${ground.closing_time || '22:00'}`} />
+            <DetailItem icon="time-outline" label="Hours" value={`${formatTime12h(ground.opening_time) || '6:00 AM'} – ${formatTime12h(ground.closing_time) || '10:00 PM'}`} />
             <DetailItem icon="albums-outline" label="Surface" value={ground.surface_type_display || ground.surface_type || 'Standard'} />
             <DetailItem icon="football-outline" label="Bookings" value={`${ground.total_bookings || 0} completed`} />
           </View>

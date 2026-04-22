@@ -102,18 +102,18 @@ export default function HomeScreen() {
         <View style={styles.heroMetrics}>
           <View style={styles.metricCard}>
             <Icon name="football-outline" size={18} color={theme.colors.primary} />
-            <Text style={styles.metricValue}>{featuredCount}</Text>
-            <Text style={styles.metricLabel}>Venues live</Text>
+            <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit>{featuredCount}</Text>
+            <Text style={styles.metricLabel} numberOfLines={1}>Venues live</Text>
           </View>
           <View style={styles.metricCard}>
             <Icon name="flash-outline" size={18} color={theme.colors.secondary} />
-            <Text style={styles.metricValue}>Instant</Text>
-            <Text style={styles.metricLabel}>Book & pay</Text>
+            <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit>Instant</Text>
+            <Text style={styles.metricLabel} numberOfLines={1}>Book & pay</Text>
           </View>
           <View style={styles.metricCard}>
             <Icon name="shield-checkmark-outline" size={18} color={theme.colors.accent} />
-            <Text style={styles.metricValue}>Secure</Text>
-            <Text style={styles.metricLabel}>Razorpay</Text>
+            <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit>Secure</Text>
+            <Text style={styles.metricLabel} numberOfLines={1}>Razorpay</Text>
           </View>
         </View>
       </View>
@@ -121,7 +121,7 @@ export default function HomeScreen() {
       {referralCode ? (
         <View style={styles.referralCard}>
           <View style={styles.referralTop}>
-            <View>
+            <View style={{flex: 1}}>
               <Text style={styles.referralEyebrow}>REFERRAL LOCKER</Text>
               <Text style={styles.referralTitle}>Share your code and bring your squad in.</Text>
             </View>
@@ -282,17 +282,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: theme.borderRadius.l,
-    padding: theme.spacing.m,
+    padding: theme.spacing.s,
+    paddingVertical: theme.spacing.m,
+    alignItems: 'center',
+    minWidth: 0,
   },
   metricValue: {
-    ...theme.typography.h3,
+    ...theme.typography.bodyM,
     color: theme.colors.white,
+    fontWeight: '700',
     marginTop: theme.spacing.s,
   },
   metricLabel: {
     ...theme.typography.caption,
     color: '#B3C7DC',
     marginTop: 2,
+    textAlign: 'center',
   },
   referralCard: {
     backgroundColor: '#FFF6E7',
@@ -324,6 +329,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   referralCodeRow: {
     flexDirection: 'row',

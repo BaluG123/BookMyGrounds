@@ -17,7 +17,7 @@ import { bookingsAPI } from '../../api/bookings';
 import { groundsAPI } from '../../api/grounds';
 import { getErrorMessage } from '../../utils/error';
 import { useAppSelector } from '../../store';
-import { getDisplayAmount, getDurationLabel, getEffectivePlanPrice } from '../../utils/pricing';
+import { getDisplayAmount, getDurationLabel, getEffectivePlanPrice, formatTime12h, getMultiSlotPrice } from '../../utils/pricing';
 import { Input } from '../../components/Input';
 
 function formatDateLabel(date: Date) {
@@ -33,12 +33,19 @@ function formatDateValue(date: Date) {
 }
 
 function formatTimeLabel(time?: string) {
-  if (!time) return '--:--';
-  return time.slice(0, 5);
+  return formatTime12h(time);
 }
 
 function sortSlotsByTime(slots: any[]) {
   return [...slots].sort((first, second) => first.start_time.localeCompare(second.start_time));
+}
+
+function calcDurationHours(start: string, end: string): number {
+  const startHour = Number(start.slice(0, 2));
+  const startMinute = Number(start.slice(3, 5));
+  const endHour = Number(end.slice(0, 2));
+  const endMinute = Number(end.slice(3, 5));
+  return ((endHour * 60 + endMinute) - (startHour * 60 + startMinute)) / 60;
 }
 
 function resolveMatchingPricingPlan(ground: any, slot: any) {
@@ -47,20 +54,28 @@ function resolveMatchingPricingPlan(ground: any, slot: any) {
   const end = slot?.end_time;
 
   if (!start || !end) {
-    return null;
+    return { plan: null, totalDurationHours: 0 };
   }
 
-  const startHour = Number(start.slice(0, 2));
-  const startMinute = Number(start.slice(3, 5));
-  const endHour = Number(end.slice(0, 2));
-  const endMinute = Number(end.slice(3, 5));
-  const durationHours = ((endHour * 60 + endMinute) - (startHour * 60 + startMinute)) / 60;
+  const durationHours = calcDurationHours(start, end);
 
-  return (
-    pricingPlans.find((plan: any) => Number(plan.duration_hours) === durationHours && plan.is_active) ||
-    pricingPlans.find((plan: any) => plan.duration_type === 'per_hour' && plan.is_active) ||
-    null
+  // First: try an exact duration match
+  const exactMatch = pricingPlans.find(
+    (plan: any) => Number(plan.duration_hours) === durationHours && plan.is_active
   );
+  if (exactMatch) {
+    return { plan: exactMatch, totalDurationHours: durationHours };
+  }
+
+  // Second: fall back to a per_hour plan (we'll multiply price × durationHours)
+  const perHourPlan = pricingPlans.find(
+    (plan: any) => plan.duration_type === 'per_hour' && plan.is_active
+  );
+  if (perHourPlan) {
+    return { plan: perHourPlan, totalDurationHours: durationHours };
+  }
+
+  return { plan: null, totalDurationHours: durationHours };
 }
 
 export default function SelectSlotScreen() {
@@ -137,8 +152,10 @@ export default function SelectSlotScreen() {
     start_time: selectedSlotData[0].start_time,
     end_time: selectedSlotData[selectedSlotData.length - 1].end_time,
   } : null;
-  const matchedPricingPlan = selectedSlotRange ? resolveMatchingPricingPlan(ground, selectedSlotRange) : null;
-  const selectedSlotPrice = getEffectivePlanPrice(matchedPricingPlan, selectedDate);
+  const { plan: matchedPricingPlan, totalDurationHours } = selectedSlotRange
+    ? resolveMatchingPricingPlan(ground, selectedSlotRange)
+    : { plan: null, totalDurationHours: 0 };
+  const selectedSlotPrice = getMultiSlotPrice(matchedPricingPlan, totalDurationHours, selectedDate);
 
   const handleSlotToggle = (slot: any) => {
     if (!slot?.is_bookable) {
@@ -328,13 +345,13 @@ export default function SelectSlotScreen() {
           <Text style={styles.footerLabel}>Selected</Text>
           <Text style={styles.footerValue}>
             {selectedSlotData.length > 0
-              ? `${formatTimeLabel(selectedSlotData[0].start_time)} - ${formatTimeLabel(selectedSlotData[selectedSlotData.length - 1].end_time)}`
+              ? `${formatTimeLabel(selectedSlotData[0].start_time)} – ${formatTimeLabel(selectedSlotData[selectedSlotData.length - 1].end_time)}`
               : 'Choose a slot to continue'}
           </Text>
           {selectedSlotData.length > 0 ? (
             <Text style={styles.footerHint}>
               {matchedPricingPlan
-                ? `${selectedSlotData.length} slot${selectedSlotData.length > 1 ? 's' : ''} • ${getDurationLabel(matchedPricingPlan)} • ${getDisplayAmount(selectedSlotPrice)}`
+                ? `${selectedSlotData.length} slot${selectedSlotData.length > 1 ? 's' : ''} • ${totalDurationHours}h • ${getDisplayAmount(selectedSlotPrice)}`
                 : 'No active pricing plan found for this slot duration.'}
             </Text>
           ) : null}

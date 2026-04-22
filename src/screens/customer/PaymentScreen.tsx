@@ -10,6 +10,7 @@ import { bookingsAPI } from '../../api/bookings';
 import { getErrorMessage } from '../../utils/error';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
+import { formatTime12h } from '../../utils/pricing';
 
 const PAYMENT_METHODS = [
   { key: 'online', label: 'Online', icon: 'globe-outline' },
@@ -240,7 +241,7 @@ export default function PaymentScreen() {
             <View style={styles.successDetail}>
               <Text style={styles.successDetailLabel}>Date & Time</Text>
               <Text style={styles.successDetailValue}>
-                {booking.booking_date} • {booking.start_time?.slice(0, 5)} - {booking.end_time?.slice(0, 5)}
+                {booking.booking_date} • {formatTime12h(booking.start_time)} – {formatTime12h(booking.end_time)}
               </Text>
             </View>
             <Text style={styles.successRedirect}>Redirecting to booking details...</Text>
@@ -278,7 +279,7 @@ export default function PaymentScreen() {
             <View>
               <Text style={styles.summaryGround}>{booking.ground_name || 'Booking'}</Text>
               <Text style={styles.summaryLine}>
-                {booking.booking_date} • {booking.start_time?.slice(0, 5)} - {booking.end_time?.slice(0, 5)}
+                {booking.booking_date} • {formatTime12h(booking.start_time)} – {formatTime12h(booking.end_time)}
               </Text>
             </View>
             <View style={styles.bookingNumBadge}>

@@ -14,14 +14,6 @@
       },
       "oauth_client": [
         {
-          "client_id": "614899789202-2kodc2ivgqn7gajf9vqqv7thkr647a4i.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.bookmygrounds",
-            "certificate_hash": "a3c2ff95824c2b437384e5a7cf6d45332c989303"
-          }
-        },
-        {
           "client_id": "614899789202-9vl14u690h3dbidv6iq08fcvou9krbos.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -35,6 +27,59 @@
           "android_info": {
             "package_name": "com.bookmygrounds",
             "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "614899789202-l1ujssb8k8odq4tge5273v6k45j8usfj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgo4aS1p82eT7puTb13skh9Gr6_GelvM8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "614899789202-l1ujssb8k8odq4tge5273v6k45j8usfj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:614899789202:android:a724b915fb1086c730654b",
+        "android_client_info": {
+          "package_name": "in.bookmygrounds.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "614899789202-2kodc2ivgqn7gajf9vqqv7thkr647a4i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.bookmygrounds.app",
+            "certificate_hash": "a3c2ff95824c2b437384e5a7cf6d45332c989303"
+          }
+        },
+        {
+          "client_id": "614899789202-2tddslfu72rq5r67dcajsn570pkgta5g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.bookmygrounds.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "614899789202-6s0p0air9b1mpc917vk51nm8o438j977.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.bookmygrounds.app",
+            "certificate_hash": "fca9f92d8b20c410601068c1f4d3703862bbbaaa"
           }
         },
         {

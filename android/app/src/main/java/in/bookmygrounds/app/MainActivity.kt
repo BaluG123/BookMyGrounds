@@ -1,4 +1,4 @@
-package com.bookmygrounds
+package `in`.bookmygrounds.app
 
 import android.os.Bundle
 import com.facebook.react.ReactActivity

@@ -20,3 +20,8 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// storeFile=app/bookmygrounds-upload-key.keystore
+// storePassword=bookmygrounds@143
+// keyAlias=bookmygroundsupload
+// keyPassword=bookmygrounds@143
